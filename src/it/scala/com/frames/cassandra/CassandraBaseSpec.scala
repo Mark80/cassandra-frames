@@ -6,7 +6,7 @@ import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Matchers, WordSpec}
 
 trait CassandraBaseSpec extends WordSpec with Matchers with BeforeAndAfterEach with BeforeAndAfterAll {
 
-  val clusterResource: Resource[IO, Cluster] =
+  implicit val clusterResource: Resource[IO, Cluster] =
     Resource.liftF(IO.pure(Cluster.builder().addContactPoints(Config.CassandraHost: _*).withPort(Config.CassandraPort).build()))
 
   implicit val sessionResource: Resource[IO, Session] =

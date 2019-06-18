@@ -16,9 +16,7 @@ class KeyspaceSpec extends CassandraBaseSpec {
       } yield exist).unsafeRunSync()
 
       existingKeyspace should not be empty
-
     }
-
   }
 
   private def checkKeySpace(): IO[Option[KeyspaceMetadata]] =

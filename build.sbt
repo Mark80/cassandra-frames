@@ -32,11 +32,8 @@ lazy val cassandraMigration = project
       "com.datastax.cassandra" % "cassandra-driver-core" % "3.6.0",
       "org.typelevel" %% "cats" % "0.9.0",
       "org.typelevel" %% "cats-effect" % "1.3.1",
-
-      // https://mvnrepository.com/artifact/com.typesafe.scala-logging/scala-logging
       "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
-
-      // https://mvnrepository.com/artifact/org.scalatest/scalatest
-      "org.scalatest" %% "scalatest" % "3.0.8" % Test
+      "org.scalatest" %% "scalatest" % "3.0.8" % "it, test",
+      "com.typesafe" % "config" % "1.3.4"
     )
   )

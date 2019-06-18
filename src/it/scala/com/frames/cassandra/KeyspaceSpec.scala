@@ -7,8 +7,8 @@ class KeyspaceSpec extends CassandraBaseSpec {
   val tables: List[String] = Nil
   val keySpace: String = "key_space"
 
-  "Test" should {
-    "create a work space" in {
+  "Keyspace" should {
+    "create a key space" in {
 
       val existingKeyspace = (for {
         _ <- createKeyspace()

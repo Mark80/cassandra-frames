@@ -17,7 +17,7 @@ val commonSettings: Seq[SettingsDefinition] = Seq(
 scalacOptions += "-Ypartial-unification"
 scalacOptions += "-language:higherKinds"
 
-lazy val cassandraMigration = project
+lazy val cassandraFrame = project
   .in(file("."))
   .configs(IntegrationTest)
   .settings(commonSettings: _*)
@@ -34,6 +34,7 @@ lazy val cassandraMigration = project
       "org.typelevel" %% "cats-effect" % "1.3.1",
       "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
       "org.scalatest" %% "scalatest" % "3.0.8" % "it, test",
+      "org.scalamock" %% "scalamock" % "4.2.0" % Test,
       "com.typesafe" % "config" % "1.3.4"
     )
   )

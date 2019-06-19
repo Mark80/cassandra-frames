@@ -15,11 +15,6 @@ trait CassandraBaseSpec extends WordSpec with Matchers with BeforeAndAfterEach w
   def tables: List[String]
   def keySpace: String
 
-  override def beforeAll(): Unit =
-    clusterResource
-      .use(cluster => CassandraMigration.migrate(cluster, keySpace))
-      .unsafeRunSync()
-
   override def beforeEach(): Unit =
     cleanTables()
 

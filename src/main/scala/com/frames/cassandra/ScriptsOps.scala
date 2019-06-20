@@ -9,9 +9,10 @@ import scala.io.Source
 
 object ScriptsOps {
 
-  type CqlFile           = (String, Source)
-  type CqlResource[F[_]] = Resource[F, List[CqlFile]]
-  type AppliedScript     = (String, String)
+  type CqlFile                     = (String, Source)
+  type CqlResource[F[_]]           = Resource[F, List[CqlFile]]
+  type AppliedScript               = (String, String)
+  type AppliedScriptResource[F[_]] = Resource[F, List[AppliedScript]]
 
   def loadScripts[F[_]](scriptsFolder: String = Config.DefaultScriptFolder)(implicit sync: Sync[F]): CqlResource[F] =
     Resource
@@ -32,12 +33,14 @@ object ScriptsOps {
 
   def compareAppliedScriptsWithSources[F[_]](scriptFiles: List[CqlFile], appliedScripts: List[AppliedScript])(
       implicit sync: Sync[F]
-  ): F[List[AppliedScript]] =
-    sync.delay(
-      appliedScripts
-        .map(applied => (applied, scriptFiles.find(script => script._1 == applied._1).map(_._2)))
-        .filter(couple => couple._2.forall(sourceBody => compareChecksum(couple._1._2, sourceBody)))
-        .map(_._1)
+  ): AppliedScriptResource[F] =
+    Resource.liftF(
+      sync.delay(
+        appliedScripts
+          .map(applied => (applied, scriptFiles.find(script => script._1 == applied._1).map(_._2)))
+          .filter(couple => couple._2.forall(sourceBody => compareChecksum(couple._1._2, sourceBody)))
+          .map(_._1)
+      )
     )
 
   private def compareChecksum(applied: String, source: Source) = {

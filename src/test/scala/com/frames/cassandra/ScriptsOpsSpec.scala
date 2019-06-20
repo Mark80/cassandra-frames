@@ -3,16 +3,15 @@ package com.frames.cassandra
 import cats.effect.IO
 import org.scalatest.{Matchers, WordSpec}
 
-import scala.io.Source
-
 class ScriptsOpsSpec extends WordSpec with Matchers {
 
   "ScriptsOpsSpec" should {
 
-    val notExistingFolder    = "/not-existing-folder"
-    val customEmptyFolder    = "/emptyFolder"
-    val customNotEmptyFolder = "/customNotEmptyFolder"
-    val folderWithoutCql     = "/folderWithoutCql"
+    val notExistingFolder      = "/not-existing-folder"
+    val customEmptyFolder      = "/emptyFolder"
+    val customNotEmptyFolder   = "/customNotEmptyFolder"
+    val folderWithoutCql       = "/folderWithoutCql"
+    val withChecksumDifference = "/withChecksumDifference"
 
     "return empty list" when {
 
@@ -62,43 +61,37 @@ class ScriptsOpsSpec extends WordSpec with Matchers {
 
     "return list of scripts with checksum different" in {
 
-      val scripts = List(("1-add-table.cql", Source.fromString("ADD TABLE1")), ("2-add-table.cql", Source.fromString("2")))
-      val applied = List(
-        ("1-add-table.cql", ScriptsOps.md5("ADD TABLE1")),
-        ("2-add-table.cql", ScriptsOps.md5("ADD TABLE2")),
-        ("3-remove-table.cql", ScriptsOps.md5("REMOVE TABLE"))
-      )
+      val applied = List(("V1_script_name.cql", ScriptsOps.md5("ADD TABLE1")), ("V2_script_name.cql", ScriptsOps.md5("ADD TABLE2")))
 
-      ScriptsOps
-        .compareAppliedScriptsWithSources[IO](scripts, applied)
-        .unsafeRunSync() should have size 2
+      val result = for {
+        scripts <- ScriptsOps.loadScripts[IO](withChecksumDifference)
+        res     <- ScriptsOps.compareAppliedScriptsWithSources[IO](scripts, applied)
+      } yield res
+
+      result.use(resources => IO(resources))
     }
 
     "return empty list" when {
       "checksum are correct" in {
 
-        val scripts = List(
-          ("1-add-table.cql", Source.fromString("ADD TABLE1")),
-          ("2-add-table.cql", Source.fromString("ADD TABLE2")),
-          ("3-remove-table.cql", Source.fromString("REMOVE TABLE"))
-        )
-        val applied = List(("1-add-table.cql", ScriptsOps.md5("ADD TABLE1")), ("2-add-table.cql", ScriptsOps.md5("ADD TABLE2")))
+        val applied = List(("V1_script_name.cql", ScriptsOps.md5("ADD TABLE1")), ("V2_script_name.cql", ScriptsOps.md5("ADD TABLE2")))
 
-        ScriptsOps
-          .compareAppliedScriptsWithSources[IO](scripts, applied)
-          .unsafeRunSync() shouldBe Nil
+        val result = for {
+          scripts <- ScriptsOps.loadScripts[IO]()
+          res     <- ScriptsOps.compareAppliedScriptsWithSources[IO](scripts, applied)
+        } yield res
+
+        result.use(resources => IO(resources)).unsafeRunSync() shouldBe Nil
       }
 
       "no files are previously applied" in {
 
-        val scripts = List(
-          ("1-add-table.cql", Source.fromString("ADD TABLE1")),
-          ("2-add-table.cql", Source.fromString("ADD TABLE2")),
-          ("3-remove-table.cql", Source.fromString("REMOVE TABLE"))
-        )
-        ScriptsOps
-          .compareAppliedScriptsWithSources[IO](scripts, Nil)
-          .unsafeRunSync() shouldBe Nil
+        val result = for {
+          scripts <- ScriptsOps.loadScripts[IO]()
+          res     <- ScriptsOps.compareAppliedScriptsWithSources[IO](scripts, Nil)
+        } yield res
+
+        result.use(resources => IO(resources)).unsafeRunSync() shouldBe Nil
       }
     }
   }

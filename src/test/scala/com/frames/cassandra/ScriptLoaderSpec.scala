@@ -9,7 +9,7 @@ class ScriptLoaderSpec extends WordSpec with Matchers {
 
     val notExistingFolder = "/not-existing-folder"
     val customEmptyFolder = "/emptyFolder"
-    val defaultFolder = "/migration/scripts"
+    val customNotEmptyFolder = "/customNotEmptyFolder"
     val folderWithoutCql = "/folderWithoutCql"
 
     "return empty list" when {
@@ -32,9 +32,14 @@ class ScriptLoaderSpec extends WordSpec with Matchers {
 
     "return list of sources" when {
 
-      "folder contains files with .cql extensions " in {
+      "default folder contains files with .cql extensions " in {
 
-        ScriptLoader.loadScripts[IO](defaultFolder).use(res => IO(res)).unsafeRunSync() should have size 2
+        ScriptLoader.loadScripts[IO]().use(res => IO(res)).unsafeRunSync() should have size 2
+      }
+
+      "custom folder contains files with .cql extensions " in {
+
+        ScriptLoader.loadScripts[IO](customNotEmptyFolder).use(res => IO(res)).unsafeRunSync() should have size 2
       }
     }
   }

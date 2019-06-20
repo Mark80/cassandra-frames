@@ -7,5 +7,5 @@ object Config {
 
   lazy val CassandraHost = config.getString("cassandra.host").split(",")
   lazy val CassandraPort = config.getInt("cassandra.port")
-  lazy val DefaultScriptFolder = config.getString("cassandra.folder")
+  lazy val DefaultScriptFolder = config.getString("cassandra.scriptFolder")
 }

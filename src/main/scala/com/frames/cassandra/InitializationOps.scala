@@ -2,7 +2,7 @@ package com.frames.cassandra
 
 object InitializationOps {
 
-  def create(keyspace: String): String =
+  def createKeyspace(keyspace: String): String =
     s"""CREATE KEYSPACE $keyspace
        | WITH replication = {
        | 'class':'$replicationClass',

@@ -1,6 +1,6 @@
 package com.frames.cassandra
 
-import cats.effect.IO
+import cats.effect.{IO, Resource}
 import org.scalatest.{Matchers, WordSpec}
 
 class ScriptsOpsSpec extends WordSpec with Matchers {
@@ -61,24 +61,26 @@ class ScriptsOpsSpec extends WordSpec with Matchers {
 
     "return list of scripts with checksum different" in {
 
-      val applied = List(("V1_script_name.cql", ScriptsOps.md5("ADD TABLE1")), ("V2_script_name.cql", ScriptsOps.md5("ADD TABLE2")))
+      val applied =
+        List(AppliedScript("V1_script_name.cql", ScriptsOps.md5("ADD TABLE1")), AppliedScript("V2_script_name.cql", ScriptsOps.md5("ADD TABLE2")))
 
       val result = for {
         scripts <- ScriptsOps.loadScripts[IO](withChecksumDifference)
-        res     <- ScriptsOps.compareAppliedScriptsWithSources[IO](scripts, applied)
+        res     <- Resource.liftF(ScriptsOps.getVariationInScriptResources[IO](scripts, applied))
       } yield res
 
-      result.use(resources => IO(resources))
+      result.use(resources => IO(resources)).unsafeRunSync() should have size 1
     }
 
     "return empty list" when {
       "checksum are correct" in {
 
-        val applied = List(("V1_script_name.cql", ScriptsOps.md5("ADD TABLE1")), ("V2_script_name.cql", ScriptsOps.md5("ADD TABLE2")))
+        val applied =
+          List(AppliedScript("V1_script_name.cql", ScriptsOps.md5("ADD TABLE1")), AppliedScript("V2_script_name.cql", ScriptsOps.md5("ADD TABLE2")))
 
         val result = for {
           scripts <- ScriptsOps.loadScripts[IO]()
-          res     <- ScriptsOps.compareAppliedScriptsWithSources[IO](scripts, applied)
+          res     <- Resource.liftF(ScriptsOps.getVariationInScriptResources[IO](scripts, applied))
         } yield res
 
         result.use(resources => IO(resources)).unsafeRunSync() shouldBe Nil
@@ -88,7 +90,7 @@ class ScriptsOpsSpec extends WordSpec with Matchers {
 
         val result = for {
           scripts <- ScriptsOps.loadScripts[IO]()
-          res     <- ScriptsOps.compareAppliedScriptsWithSources[IO](scripts, Nil)
+          res     <- Resource.liftF(ScriptsOps.getVariationInScriptResources[IO](scripts, Nil))
         } yield res
 
         result.use(resources => IO(resources)).unsafeRunSync() shouldBe Nil

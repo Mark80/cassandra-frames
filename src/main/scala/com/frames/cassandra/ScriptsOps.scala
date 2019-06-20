@@ -7,11 +7,12 @@ import cats.effect.{Resource, Sync}
 
 import scala.io.Source
 
+case class CqlFile(name: String, body: Source)
+case class AppliedScript(name: String, body: String)
+
 object ScriptsOps {
 
-  type CqlFile                     = (String, Source)
   type CqlResource[F[_]]           = Resource[F, List[CqlFile]]
-  type AppliedScript               = (String, String)
   type AppliedScriptResource[F[_]] = Resource[F, List[AppliedScript]]
 
   def loadScripts[F[_]](scriptsFolder: String = Config.DefaultScriptFolder)(implicit sync: Sync[F]): CqlResource[F] =
@@ -24,30 +25,33 @@ object ScriptsOps {
             .map(file => getCqlFiles(file))
             .transpose
             .flatten
-            .map(file => (file.getName, Source.fromFile(file)))
+            .map(file => CqlFile(file.getName, Source.fromFile(file)))
             .toList
       )
 
   private def getCqlFiles(folder: File): List[File] =
     folder.listFiles(_.getName.endsWith(".cql")).toList
 
-  def compareAppliedScriptsWithSources[F[_]](scriptFiles: List[CqlFile], appliedScripts: List[AppliedScript])(
+  def getVariationInScriptResources[F[_]](scriptFiles: List[CqlFile], appliedScripts: List[AppliedScript])(
       implicit sync: Sync[F]
-  ): AppliedScriptResource[F] =
-    Resource.liftF(
-      sync.delay(
-        appliedScripts
-          .map(applied => (applied, scriptFiles.find(script => script._1 == applied._1).map(_._2)))
-          .filter(couple => couple._2.forall(sourceBody => compareChecksum(couple._1._2, sourceBody)))
-          .map(_._1)
-      )
+  ): F[List[AppliedScript]] =
+    sync.delay(
+      appliedScripts
+        .map(applied => toTupleWithFileBody(applied, scriptFiles))
+        .filter(hasDifferentCheckout)
+        .map(_._1)
     )
 
-  private def compareChecksum(applied: String, source: Source) = {
-    val appliedText = applied
-    val scriptText  = source.mkString
-    appliedText != md5(scriptText)
-  }
+  private def toTupleWithFileBody(appliedScript: AppliedScript, scriptFiles: List[CqlFile]) =
+    (appliedScript, getRelativeScriptFile(appliedScript.name, scriptFiles))
+
+  private def getRelativeScriptFile(appliedScriptName: String, scriptFiles: List[CqlFile]) =
+    scriptFiles.find(script => script.name == appliedScriptName).map(_.body)
+
+  private def hasDifferentCheckout(tuple: (AppliedScript, Option[Source])) =
+    tuple._2.forall(sourceBody => {
+      tuple._1.body != md5(sourceBody.mkString)
+    })
 
   def md5(s: String): String =
     MessageDigest.getInstance("MD5").digest(s.getBytes).mkString

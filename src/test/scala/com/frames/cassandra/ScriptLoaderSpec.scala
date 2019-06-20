@@ -16,17 +16,17 @@ class ScriptLoaderSpec extends WordSpec with Matchers {
 
       "folder not exists" in {
 
-        ScriptLoader.loadScripts[IO](notExistingFolder).unsafeRunSync() shouldBe Nil
+        ScriptLoader.loadScripts[IO](notExistingFolder).use(res => IO(res)).unsafeRunSync() shouldBe Nil
       }
 
       "folder is empty" in {
 
-        ScriptLoader.loadScripts[IO](customEmptyFolder).unsafeRunSync() shouldBe Nil
+        ScriptLoader.loadScripts[IO](customEmptyFolder).use(res => IO(res)).unsafeRunSync() shouldBe Nil
       }
 
       "folder not contains files with .cql extensions " in {
 
-        ScriptLoader.loadScripts[IO](folderWithoutCql).unsafeRunSync() shouldBe Nil
+        ScriptLoader.loadScripts[IO](folderWithoutCql).use(res => IO(res)).unsafeRunSync() shouldBe Nil
       }
     }
 
@@ -34,7 +34,7 @@ class ScriptLoaderSpec extends WordSpec with Matchers {
 
       "folder contains files with .cql extensions " in {
 
-        ScriptLoader.loadScripts[IO](defaultFolder).unsafeRunSync() should have size 2
+        ScriptLoader.loadScripts[IO](defaultFolder).use(res => IO(res)).unsafeRunSync() should have size 2
       }
     }
   }

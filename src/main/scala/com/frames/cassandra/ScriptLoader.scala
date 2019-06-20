@@ -2,25 +2,29 @@ package com.frames.cassandra
 
 import java.io.File
 
-import cats.effect.Sync
+import cats.effect.{Resource, Sync}
 
 import scala.io.Source
 
 object ScriptLoader {
 
-  def loadScripts[F[_]](scriptsFolder: String = "/migration/scripts")(implicit sync: Sync[F]): F[List[Source]] = sync.delay {
-    val maybeFolder: Option[File] = for {
-      path <- Option(getClass.getResource(scriptsFolder))
-      folder <- Option(new File(path.getPath))
-    } yield folder
+  type CqlFile = Source
+  type CqlResource[F[_]] = Resource[F, List[CqlFile]]
 
-    maybeFolder match {
-      case Some(f) =>
-        f.listFiles(_.getName.endsWith(".cql"))
-          .map(Source.fromFile)
-          .toList
-      case None =>
-        Nil
-    }
-  }
+  def loadScripts[F[_]](scriptsFolder: String = Config.DefaultScriptFolder)(implicit sync: Sync[F]): CqlResource[F] =
+    Resource
+      .liftF(sync.delay(Option(getClass.getResource(scriptsFolder))))
+      .map(mayBeUrl => mayBeUrl.map(url => new File(url.getPath)))
+      .map(
+        folder =>
+          folder
+            .map(file => getCqlFiles(file))
+            .transpose
+            .flatten
+            .map(Source.fromFile)
+            .toList
+      )
+
+  private def getCqlFiles(folder: File): List[File] =
+    folder.listFiles(_.getName.endsWith(".cql")).toList
 }

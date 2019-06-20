@@ -3,7 +3,7 @@ package com.frames.cassandra
 import cats.effect._
 import cats.implicits._
 import com.datastax.driver.core.Session
-import com.datastax.driver.core.exceptions.{AlreadyExistsException, QueryValidationException}
+import com.datastax.driver.core.exceptions.AlreadyExistsException
 
 sealed trait OperationResult
 

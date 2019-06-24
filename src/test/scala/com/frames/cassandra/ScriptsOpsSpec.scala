@@ -3,7 +3,7 @@ package com.frames.cassandra
 import cats.effect.{IO, Resource}
 import org.scalatest.{Matchers, WordSpec}
 
-class ScriptsOpsSpec extends WordSpec with Matchers {
+class ScriptsOpsSpec extends WordSpec with Matchers with AlgebraFixture {
 
   "ScriptsOpsSpec" should {
 
@@ -62,7 +62,10 @@ class ScriptsOpsSpec extends WordSpec with Matchers {
     "return list of scripts with checksum different" in {
 
       val applied =
-        List(AppliedScript("V1_script_name.cql", ScriptsOps.md5("ADD TABLE1")), AppliedScript("V2_script_name.cql", ScriptsOps.md5("ADD TABLE2")))
+        List(
+          mockAppliedScript(1, "V1_script_name.cql", ScriptsOps.md5("ADD TABLE1")),
+          mockAppliedScript(2, "V2_script_name.cql", ScriptsOps.md5("ADD TABLE2"))
+        )
 
       val result = for {
         scripts <- ScriptsOps.loadScripts[IO](withChecksumDifference)
@@ -76,7 +79,10 @@ class ScriptsOpsSpec extends WordSpec with Matchers {
       "checksum are correct" in {
 
         val applied =
-          List(AppliedScript("V1_script_name.cql", ScriptsOps.md5("ADD TABLE1")), AppliedScript("V2_script_name.cql", ScriptsOps.md5("ADD TABLE2")))
+          List(
+            mockAppliedScript(1, "V1_script_name.cql", ScriptsOps.md5("ADD TABLE1")),
+            mockAppliedScript(2, "V2_script_name.cql", ScriptsOps.md5("ADD TABLE2"))
+          )
 
         val result = for {
           scripts <- ScriptsOps.loadScripts[IO]()

@@ -8,7 +8,16 @@ import cats.effect.{Resource, Sync}
 import scala.io.Source
 
 case class CqlFile(name: String, body: Source)
-case class AppliedScript(name: String, body: String)
+
+case class AppliedScript(
+    version: Long,
+    fileName: String,
+    checksum: String,
+    date: String,
+    errorMessage: Option[String],
+    success: Boolean,
+    executionTime: Long
+)
 
 object ScriptsOps {
 
@@ -43,14 +52,14 @@ object ScriptsOps {
     )
 
   private def toTupleWithFileBody(appliedScript: AppliedScript, scriptFiles: List[CqlFile]) =
-    (appliedScript, getRelativeScriptFile(appliedScript.name, scriptFiles))
+    (appliedScript, getRelativeScriptFile(appliedScript.fileName, scriptFiles))
 
   private def getRelativeScriptFile(appliedScriptName: String, scriptFiles: List[CqlFile]) =
     scriptFiles.find(script => script.name == appliedScriptName).map(_.body)
 
   private def hasDifferentCheckout(tuple: (AppliedScript, Option[Source])) =
     tuple._2.forall(sourceBody => {
-      tuple._1.body != md5(sourceBody.mkString)
+      tuple._1.checksum != md5(sourceBody.mkString)
     })
 
   def md5(s: String): String =

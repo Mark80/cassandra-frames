@@ -1,5 +1,7 @@
 package com.frames.cassandra.utils
 
+import java.util.NoSuchElementException
+
 import cats.data.EitherT
 import cats.effect.IO
 import org.scalactic.source

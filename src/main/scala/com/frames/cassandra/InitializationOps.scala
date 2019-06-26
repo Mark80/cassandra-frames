@@ -15,13 +15,14 @@ object InitializationOps {
   def createFrameTable(keyspace: String): String =
     s"""
       |CREATE TABLE IF NOT EXISTS $keyspace.frames_table (
-      |    PRIMARY KEY (version),
-      |    version text,
-      |    checksum bigint,
+      |    version bigint,
+      |    file_name text,
+      |    checksum text,
       |    date text,
       |    error_message text,
       |    success boolean,
-      |    execution_time bigint
+      |    execution_time bigint,
+      |    PRIMARY KEY (version)
       |);
     """.stripMargin
 

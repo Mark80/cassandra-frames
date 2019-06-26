@@ -15,9 +15,8 @@ object FramesOps {
 
   import FramesField._
 
-  def getLastAppliedScript[F[_]](keyspace: String): String =
-    s"SELECT * FROM $keyspace.frames_table WHERE success = true LIMIT 1 ALLOW FILTERING"
-  //QueryBuilder.select().from(keyspace).where(QueryBuilder.eq("success", true)).limit(1)
+  def getAppliedScripts[F[_]](keyspace: String): String =
+    s"SELECT * FROM $keyspace.frames_table WHERE success = true ALLOW FILTERING"
 
   def toAppliedScript(row: Row): AppliedScript =
     AppliedScript(

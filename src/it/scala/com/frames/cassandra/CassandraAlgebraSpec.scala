@@ -3,10 +3,10 @@ package com.frames.cassandra
 import cats.data.EitherT
 import cats.effect.IO
 import com.datastax.driver.core.ResultSet
-import com.datastax.driver.core.exceptions.{AlreadyExistsException, SyntaxError}
+import com.frames.cassandra.utils.EitherTValues
 import org.scalatest.OptionValues
 
-class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues {
+class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with EitherTValues {
 
   val frameTable = "frames_table"
 
@@ -21,31 +21,28 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues {
 
     "keyspace not exists" should {
 
-      "return Created" in {
+      "return KeyspaceCreated" in {
 
-        val res: Either[Error, (OperationResult, Boolean)] = (for {
+        val keyspaceCreated = for {
           result        <- createKeyspace[IO](keySpace)
           maybeKeyspace <- checkKeySpace()
-        } yield (result, maybeKeyspace)).value.unsafeRunSync()
+        } yield (result, maybeKeyspace)
 
-        res.right.get shouldBe (OK, true)
+        keyspaceCreated.rightValue shouldBe (KeyspaceCreated, true)
       }
 
     }
 
     "keyspace exists" should {
 
-      "return Exists" in {
+      "return KeyspaceAlreadyExists" in {
 
-        val result = (for {
+        val keyspaceExists = for {
           _      <- createKeyspace[IO](keySpace)
           result <- createKeyspace[IO](keySpace)
-        } yield result).value.handleErrorWith {
-          case _: AlreadyExistsException => IO(Left(KeyspaceAlreadyExists))
-          case qe: Throwable             => IO(Left(CustomError(qe.getMessage)))
-        }.unsafeRunSync()
+        } yield result
 
-        result.left.get shouldBe KeyspaceAlreadyExists
+        keyspaceExists.leftValue shouldBe KeyspaceAlreadyExists
       }
     }
 
@@ -53,22 +50,20 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues {
 
       "return Failed with query syntax error exception" in {
 
-        a[SyntaxError] should be thrownBy createKeyspace[IO]("£££%_").value.unsafeRunSync()
+        createKeyspace[IO]("£££%_").leftValue shouldBe CustomError("line 1:16 no viable alternative at character '£'")
       }
     }
 
     "schema table not exist" should {
       "create schema table" in {
 
-        val eitherResult = (for {
+        val frameTableCreated = for {
           _      <- createKeyspace[IO](keySpace)
           result <- createFrameTable[IO](keySpace)
           check  <- checkTable(keySpace, frameTable)
-        } yield (result, check)).value
-          .unsafeRunSync()
+        } yield (result, check)
 
-        eitherResult.right.get shouldBe (FrameTableCreated, true)
-
+        frameTableCreated.rightValue shouldBe (FrameTableCreated, true)
       }
 
     }
@@ -76,30 +71,33 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues {
     "schema table is empty" should {
       "return None" in {
 
-        val lastScriptApplied = (for {
+        val lastScriptApplied = for {
           _                 <- createKeyspace[IO](keySpace)
           _                 <- createFrameTable[IO](keySpace)
           lastScriptApplied <- getLastScriptApplied[IO](keySpace)
-        } yield lastScriptApplied).value
-          .unsafeRunSync()
+        } yield lastScriptApplied
 
-        lastScriptApplied.right.get shouldBe None
+        lastScriptApplied.rightValue shouldBe None
       }
 
       "return last success applied script" in {
 
-        val lastScriptApplied = (for {
+        val lastScriptApplied = for {
           _                 <- createKeyspace[IO](keySpace)
           _                 <- createFrameTable[IO](keySpace)
           _                 <- insertTestRecord(1, success = true, None)
           _                 <- insertTestRecord(2, success = true, None)
           _                 <- insertTestRecord(3, success = false, Some("error"))
           lastScriptApplied <- getLastScriptApplied[IO](keySpace)
-        } yield lastScriptApplied).value
-          .unsafeRunSync()
+        } yield lastScriptApplied
 
-        lastScriptApplied.right.get shouldBe Some(
-          AppliedScript(2, "V2_script_name.cql", md5("SCRIPT BODY 2"), "2019-01-01", None, success = true, 10L))
+        lastScriptApplied.rightValue.value shouldBe AppliedScript(2,
+                                                                  "V2_script_name.cql",
+                                                                  md5("SCRIPT BODY 2"),
+                                                                  "2019-01-01",
+                                                                  None,
+                                                                  success = true,
+                                                                  10L)
       }
     }
   }

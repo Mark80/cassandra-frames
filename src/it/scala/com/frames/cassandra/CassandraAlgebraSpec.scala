@@ -102,7 +102,7 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with Eith
     }
   }
 
-  private def insertTestRecord(version: Long, success: Boolean, messageError: Option[String]): EitherT[IO, Error, ResultSet] =
+  private def insertTestRecord(version: Long, success: Boolean, messageError: Option[String]): EitherT[IO, OperationError, ResultSet] =
     EitherT.pure(
       sessionResource
         .use(session => IO(session.execute(s"""INSERT INTO $keySpace.frames_table
@@ -123,9 +123,9 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with Eith
                         10);""".stripMargin)))
         .unsafeRunSync())
 
-  private def checkKeySpace(): EitherT[IO, Error, Boolean] =
+  private def checkKeySpace(): EitherT[IO, OperationError, Boolean] =
     EitherT.pure(clusterResource.use(cluster => IO(Option(cluster.getMetadata.getKeyspace(keySpace)).isDefined)).unsafeRunSync())
 
-  private def checkTable(keyspace: String, table: String): EitherT[IO, Error, Boolean] =
+  private def checkTable(keyspace: String, table: String): EitherT[IO, OperationError, Boolean] =
     EitherT.pure(clusterResource.use(cluster => IO(Option(cluster.getMetadata.getKeyspace(keyspace).getTable(table)).isDefined)).unsafeRunSync())
 }

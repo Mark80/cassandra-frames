@@ -17,7 +17,7 @@ class EitherTValuesExample extends WordSpec with Matchers with EitherTValues {
 
     "fail if right value is call on left" in {
       val eitherT = EitherT.apply[IO, String, String](IO(Left("result")))
-      an[TestFailedException] should be thrownBy eitherT.rightValue
+      a[TestFailedException] should be thrownBy eitherT.rightValue
     }
 
     "return the left projection" in {
@@ -27,7 +27,7 @@ class EitherTValuesExample extends WordSpec with Matchers with EitherTValues {
 
     "fail if left value is call on right" in {
       val eitherT = EitherT.apply[IO, String, String](IO(Right("result")))
-      an[TestFailedException] should be thrownBy eitherT.leftValue
+      a[TestFailedException] should be thrownBy eitherT.leftValue
     }
 
   }

@@ -47,7 +47,7 @@ object ScriptsOps {
     sync.delay(
       appliedScripts
         .map(applied => toTupleWithFileBody(applied, scriptFiles))
-        .filter(hasDifferentCheckout)
+        .filter(hasDifferentChecksum)
         .map(_._1)
     )
 
@@ -57,7 +57,7 @@ object ScriptsOps {
   private def getRelativeScriptFile(appliedScriptName: String, scriptFiles: List[CqlFile]) =
     scriptFiles.find(script => script.name == appliedScriptName).map(_.body)
 
-  private def hasDifferentCheckout(tuple: (AppliedScript, Option[Source])) =
+  private def hasDifferentChecksum(tuple: (AppliedScript, Option[Source])) =
     tuple._2.forall(sourceBody => {
       tuple._1.checksum != md5(sourceBody.mkString)
     })

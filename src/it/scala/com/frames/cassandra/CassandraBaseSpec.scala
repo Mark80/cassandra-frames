@@ -16,7 +16,9 @@ trait CassandraBaseSpec extends WordSpec with Matchers with BeforeAndAfterEach w
   def keySpace: String
 
   override def beforeEach(): Unit =
-    cleanTables()
+    sessionResource
+      .use(session => IO(session.execute(s"DROP KEYSPACE IF EXISTS $keySpace")))
+      .unsafeRunSync()
 
   override def afterEach(): Unit =
     cleanTables()
@@ -24,7 +26,7 @@ trait CassandraBaseSpec extends WordSpec with Matchers with BeforeAndAfterEach w
   private def cleanTables(): Unit =
     (for {
       tb <- IO(tables)
-      _ <- truncateTables(tb)
+      _  <- truncateTables(tb)
     } yield ()).unsafeRunSync()
 
   private def truncateTables(tables: List[String]): IO[Unit] =

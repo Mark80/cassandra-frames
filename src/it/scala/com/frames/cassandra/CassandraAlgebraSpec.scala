@@ -1,7 +1,9 @@
 package com.frames.cassandra
 
+import cats.data.EitherT
 import cats.effect.IO
 import com.datastax.driver.core.ResultSet
+import com.datastax.driver.core.exceptions.{AlreadyExistsException, SyntaxError}
 import org.scalatest.OptionValues
 
 class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues {
@@ -13,6 +15,7 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues {
   override def keySpace: String = "keyspace_name"
 
   import CassandraAlgebra._
+  import ScriptsOps._
 
   "CassandraAlgebra" when {
 
@@ -20,13 +23,12 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues {
 
       "return Created" in {
 
-        val (operationResult, keySpaceCreated) = (for {
+        val res: Either[Error, (OperationResult, Boolean)] = (for {
           result        <- createKeyspace[IO](keySpace)
           maybeKeyspace <- checkKeySpace()
-        } yield (result, maybeKeyspace)).unsafeRunSync()
+        } yield (result, maybeKeyspace)).value.unsafeRunSync()
 
-        operationResult shouldBe OK
-        keySpaceCreated shouldBe true
+        res.right.get shouldBe (OK, true)
       }
 
     }
@@ -35,34 +37,37 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues {
 
       "return Exists" in {
 
-        (for {
+        val result = (for {
           _      <- createKeyspace[IO](keySpace)
           result <- createKeyspace[IO](keySpace)
-        } yield result)
-          .unsafeRunSync() shouldBe KeyspaceAlreadyExists
+        } yield result).value.handleErrorWith {
+          case _: AlreadyExistsException => IO(Left(KeyspaceAlreadyExists))
+          case qe: Throwable             => IO(Left(CustomError(qe.getMessage)))
+        }.unsafeRunSync()
+
+        result.left.get shouldBe KeyspaceAlreadyExists
       }
     }
 
     "exception occur" should {
 
-      "return Failed with query syntax error message" in {
+      "return Failed with query syntax error exception" in {
 
-        createKeyspace[IO]("£££%_").unsafeRunSync() shouldBe Error("line 1:16 no viable alternative at character '£'")
+        a[SyntaxError] should be thrownBy createKeyspace[IO]("£££%_").value.unsafeRunSync()
       }
     }
 
     "schema table not exist" should {
       "create schema table" in {
 
-        val (createResult, check) = (for {
+        val eitherResult = (for {
           _      <- createKeyspace[IO](keySpace)
           result <- createFrameTable[IO](keySpace)
           check  <- checkTable(keySpace, frameTable)
-        } yield (result, check))
+        } yield (result, check)).value
           .unsafeRunSync()
 
-        createResult shouldBe FrameTableCreated
-        check shouldBe true
+        eitherResult.right.get shouldBe (FrameTableCreated, true)
 
       }
 
@@ -75,10 +80,10 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues {
           _                 <- createKeyspace[IO](keySpace)
           _                 <- createFrameTable[IO](keySpace)
           lastScriptApplied <- getLastScriptApplied[IO](keySpace)
-        } yield lastScriptApplied)
+        } yield lastScriptApplied).value
           .unsafeRunSync()
 
-        lastScriptApplied shouldBe None
+        lastScriptApplied.right.get shouldBe None
       }
 
       "return last success applied script" in {
@@ -90,24 +95,39 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues {
           _                 <- insertTestRecord(2, success = true, None)
           _                 <- insertTestRecord(3, success = false, Some("error"))
           lastScriptApplied <- getLastScriptApplied[IO](keySpace)
-        } yield lastScriptApplied)
+        } yield lastScriptApplied).value
           .unsafeRunSync()
 
-        lastScriptApplied.value.version shouldBe 2
+        lastScriptApplied.right.get shouldBe Some(
+          AppliedScript(2, "V2_script_name.cql", md5("SCRIPT BODY 2"), "2019-01-01", None, success = true, 10L))
       }
     }
   }
 
-  private def insertTestRecord(version: Long, success: Boolean, messageError: Option[String]): IO[ResultSet] =
-    sessionResource.use(session => IO(session.execute(s"""INSERT INTO $keySpace.frames_table
-                       (version, file_name, checksum, date, error_message, success, execution_time)
+  private def insertTestRecord(version: Long, success: Boolean, messageError: Option[String]): EitherT[IO, Error, ResultSet] =
+    EitherT.pure(
+      sessionResource
+        .use(session => IO(session.execute(s"""INSERT INTO $keySpace.frames_table
+                       (version,
+                        file_name,
+                        checksum,
+                        date,
+                        error_message,
+                        success,
+                        execution_time)
                        VALUES
-                       ($version, 'V${version}_script_name.cql', '${ScriptsOps.md5(s"SCRIPT BODY $version")}',
-                        '2019-01-01', '${messageError.getOrElse("")}', $success, 10);""")))
+                       ($version,
+                        'V${version}_script_name.cql',
+                        '${md5(s"SCRIPT BODY $version")}',
+                        '2019-01-01',
+                        ${messageError.map(msg => s"'$msg'").getOrElse("null")},
+                        $success,
+                        10);""".stripMargin)))
+        .unsafeRunSync())
 
-  private def checkKeySpace(): IO[Boolean] =
-    clusterResource.use(cluster => IO(Option(cluster.getMetadata.getKeyspace(keySpace)).isDefined))
+  private def checkKeySpace(): EitherT[IO, Error, Boolean] =
+    EitherT.pure(clusterResource.use(cluster => IO(Option(cluster.getMetadata.getKeyspace(keySpace)).isDefined)).unsafeRunSync())
 
-  private def checkTable(keyspace: String, table: String): IO[Boolean] =
-    clusterResource.use(cluster => IO(Option(cluster.getMetadata.getKeyspace(keyspace).getTable(table)).isDefined))
+  private def checkTable(keyspace: String, table: String): EitherT[IO, Error, Boolean] =
+    EitherT.pure(clusterResource.use(cluster => IO(Option(cluster.getMetadata.getKeyspace(keyspace).getTable(table)).isDefined)).unsafeRunSync())
 }

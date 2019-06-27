@@ -9,16 +9,6 @@ import scala.io.Source
 
 case class CqlFile(name: String, body: Source)
 
-case class AppliedScript(
-    version: Long,
-    fileName: String,
-    checksum: String,
-    date: String,
-    errorMessage: Option[String],
-    success: Boolean,
-    executionTime: Long
-)
-
 object ScriptsOps {
 
   type CqlResource[F[_]]           = Resource[F, List[CqlFile]]

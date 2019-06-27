@@ -1,8 +1,10 @@
 package com.frames.cassandra
 
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+
 import cats.data.EitherT
 import cats.effect.IO
-import com.datastax.driver.core.ResultSet
 import com.frames.cassandra.utils.EitherTValues
 import org.scalatest.OptionValues
 
@@ -85,47 +87,43 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with Eith
         val lastScriptApplied = for {
           _                 <- createKeyspace[IO](keySpace)
           _                 <- createFrameTable[IO](keySpace)
-          _                 <- insertTestRecord(1, success = true, None)
-          _                 <- insertTestRecord(2, success = true, None)
-          _                 <- insertTestRecord(3, success = false, Some("error"))
+          _                 <- insertAppliedScript[IO](keySpace, mockAppliedScript(1))
+          _                 <- insertAppliedScript[IO](keySpace, mockAppliedScript(2))
+          _                 <- insertAppliedScript[IO](keySpace, mockAppliedScript(3, success = false, Some("error")))
           lastScriptApplied <- getLastScriptApplied[IO](keySpace)
         } yield lastScriptApplied
 
         lastScriptApplied.rightValue.value shouldBe AppliedScript(2,
-                                                                  "V2_script_name.cql",
-                                                                  md5("SCRIPT BODY 2"),
-                                                                  "2019-01-01",
+                                                                  "V2_script.cql",
+                                                                  md5("body_2"),
+                                                                  LocalDate.now().format(DateTimeFormatter.ISO_DATE),
                                                                   None,
                                                                   success = true,
                                                                   10L)
       }
     }
-  }
 
-  private def insertTestRecord(version: Long, success: Boolean, messageError: Option[String]): EitherT[IO, OperationError, ResultSet] =
-    EitherT.pure(
-      sessionResource
-        .use(session => IO(session.execute(s"""INSERT INTO $keySpace.frames_table
-                       (version,
-                        file_name,
-                        checksum,
-                        date,
-                        error_message,
-                        success,
-                        execution_time)
-                       VALUES
-                       ($version,
-                        'V${version}_script_name.cql',
-                        '${md5(s"SCRIPT BODY $version")}',
-                        '2019-01-01',
-                        ${messageError.map(msg => s"'$msg'").getOrElse("null")},
-                        $success,
-                        10);""".stripMargin)))
-        .unsafeRunSync())
+    "insertTestRecord" should {
+      "insert new record in frames table" in {
+        val lastScriptApplied = for {
+          _                 <- createKeyspace[IO](keySpace)
+          _                 <- createFrameTable[IO](keySpace)
+          insertResult      <- insertAppliedScript[IO](keySpace, mockAppliedScript(1))
+          lastScriptApplied <- getLastScriptApplied[IO](keySpace)
+        } yield (insertResult, lastScriptApplied)
+
+        lastScriptApplied.rightValue shouldBe (ScriptApplied, Some(
+          AppliedScript(1, "V1_script.cql", md5("body_1"), LocalDate.now().format(DateTimeFormatter.ISO_DATE), None, success = true, 10L)))
+      }
+    }
+  }
 
   private def checkKeySpace(): EitherT[IO, OperationError, Boolean] =
     EitherT.pure(clusterResource.use(cluster => IO(Option(cluster.getMetadata.getKeyspace(keySpace)).isDefined)).unsafeRunSync())
 
   private def checkTable(keyspace: String, table: String): EitherT[IO, OperationError, Boolean] =
     EitherT.pure(clusterResource.use(cluster => IO(Option(cluster.getMetadata.getKeyspace(keyspace).getTable(table)).isDefined)).unsafeRunSync())
+
+  private def mockAppliedScript(version: Long, success: Boolean = true, errorMessage: Option[String] = None) =
+    AppliedScript(version, s"V${version}_script.cql", md5(s"body_$version"), "2019-01-01", errorMessage, success, 10)
 }

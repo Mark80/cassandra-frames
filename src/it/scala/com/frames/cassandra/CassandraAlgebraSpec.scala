@@ -6,9 +6,9 @@ import java.time.format.DateTimeFormatter
 import cats.data.EitherT
 import cats.effect.IO
 import com.frames.cassandra.utils.EitherTValues
-import org.scalatest.OptionValues
+import org.scalatest.{Matchers, OptionValues}
 
-class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with EitherTValues {
+class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with EitherTValues with Matchers {
 
   val frameTable = "frames_table"
 
@@ -112,8 +112,31 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with Eith
           lastScriptApplied <- getLastScriptApplied[IO](keySpace)
         } yield (insertResult, lastScriptApplied)
 
-        lastScriptApplied.rightValue shouldBe (ScriptApplied, Some(
+        lastScriptApplied.rightValue shouldBe (FrameCreated, Some(
           AppliedScript(1, "V1_script.cql", md5("body_1"), LocalDate.now().format(DateTimeFormatter.ISO_DATE), None, success = true, 10L)))
+      }
+    }
+
+    "executeScript" should {
+      "execute single query" in {
+        val executionResult = for {
+          _             <- createKeyspace[IO](keySpace)
+          _             <- createFrameTable[IO](keySpace)
+          executeResult <- executeQuery[IO](s"CREATE TABLE $keySpace.test(a text PRIMARY KEY)")
+          verifyExecute <- executeQuery[IO](s"SELECT * FROM $keySpace.test")
+        } yield (executeResult, verifyExecute)
+
+        executionResult.rightValue shouldBe (QueryExecuted, QueryExecuted)
+      }
+
+      "return a custom error if query has syntax error" in {
+        val executionResult = for {
+          _             <- createKeyspace[IO](keySpace)
+          _             <- createFrameTable[IO](keySpace)
+          executeResult <- executeQuery[IO](s"CREATE TABE $keySpace.test(a text);")
+        } yield executeResult
+
+        executionResult.leftValue shouldBe a[CustomError]
       }
     }
   }

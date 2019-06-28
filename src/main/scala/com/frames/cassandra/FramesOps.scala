@@ -32,6 +32,9 @@ object FramesOps {
   def getAppliedScripts(keyspace: String): String =
     s"SELECT * FROM $keyspace.frames_table WHERE success = true ALLOW FILTERING"
 
+  def getAllScripts(keyspace: String): String =
+    s"SELECT * FROM $keyspace.frames_table"
+
   def toAppliedScript(row: Row): AppliedScript =
     AppliedScript(
       row.getLong(Version),

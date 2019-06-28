@@ -25,6 +25,16 @@ object CassandraAlgebra extends ResourceDelay {
       case _: AlreadyExistsException => KeyspaceAlreadyExists
     }
 
+  def getAllScripts[F[_]](keySpace: String)(implicit sync: Sync[F], sessionResource: Resource[F, Session]): ErrorOr[F, List[AppliedScript]] =
+    withResourceDelay[F, Session, List[AppliedScript]] { session =>
+      session
+        .execute(FramesOps.getAllScripts(keySpace))
+        .iterator()
+        .asScala
+        .toList
+        .map(FramesOps.toAppliedScript)
+    }()
+
   def getLastScriptApplied[F[_]](keySpace: String)(implicit sync: Sync[F], sessionResource: Resource[F, Session]): ErrorOr[F, Option[AppliedScript]] =
     withResourceDelay[F, Session, Option[AppliedScript]] { session =>
       session

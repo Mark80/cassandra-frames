@@ -84,7 +84,7 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with Eith
 
       "return last success applied script" in {
 
-        val lastScriptApplied = for {
+        val lastScriptApplied: EitherT[IO, OperationError, Option[AppliedScript]] = for {
           _                 <- createKeyspace[IO](keySpace)
           _                 <- createFrameTable[IO](keySpace)
           _                 <- insertAppliedScript[IO](keySpace, mockAppliedScript(1))
@@ -93,13 +93,15 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with Eith
           lastScriptApplied <- getLastScriptApplied[IO](keySpace)
         } yield lastScriptApplied
 
-        lastScriptApplied.rightValue.value shouldBe AppliedScript(2,
-                                                                  "V2_script.cql",
-                                                                  md5("body_2"),
-                                                                  LocalDate.now().format(DateTimeFormatter.ISO_DATE),
-                                                                  None,
-                                                                  success = true,
-                                                                  10L)
+        lastScriptApplied.rightValue.value shouldBe AppliedScript(
+          2,
+          "V2_script.cql",
+          md5("body_2"),
+          LocalDate.now().format(DateTimeFormatter.ISO_DATE),
+          None,
+          success = true,
+          10L
+        )
       }
     }
 
@@ -113,7 +115,8 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with Eith
         } yield (insertResult, lastScriptApplied)
 
         lastScriptApplied.rightValue shouldBe (FrameCreated, Some(
-          AppliedScript(1, "V1_script.cql", md5("body_1"), LocalDate.now().format(DateTimeFormatter.ISO_DATE), None, success = true, 10L)))
+          AppliedScript(1, "V1_script.cql", md5("body_1"), LocalDate.now().format(DateTimeFormatter.ISO_DATE), None, success = true, 10L)
+        ))
       }
     }
 
@@ -137,6 +140,72 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with Eith
         } yield executeResult
 
         executionResult.leftValue shouldBe a[CustomError]
+      }
+    }
+
+    "retrieving applied script" should {
+
+      "return the list of applied script" in {
+
+        val allScripts = for {
+          _          <- createKeyspace[IO](keySpace)
+          _          <- createFrameTable[IO](keySpace)
+          _          <- insertAppliedScript[IO](keySpace, mockAppliedScript(1))
+          _          <- insertAppliedScript[IO](keySpace, mockAppliedScript(2))
+          _          <- insertAppliedScript[IO](keySpace, mockAppliedScript(3, success = false, Some("error")))
+          allScripts <- getAllScripts[IO](keySpace)
+        } yield allScripts
+
+        val expectedScripts = List(
+          AppliedScript(
+            1,
+            "V1_script.cql",
+            md5("body_1"),
+            LocalDate.now().format(DateTimeFormatter.ISO_DATE),
+            None,
+            success = true,
+            10L
+          ),
+          AppliedScript(
+            2,
+            "V2_script.cql",
+            md5("body_2"),
+            LocalDate.now().format(DateTimeFormatter.ISO_DATE),
+            None,
+            success = true,
+            10L
+          ),
+          AppliedScript(
+            3,
+            "V3_script.cql",
+            md5("body_3"),
+            LocalDate.now().format(DateTimeFormatter.ISO_DATE),
+            None,
+            success = false,
+            10L
+          )
+        )
+
+        allScripts.rightValue should contain theSameElementsAs expectedScripts
+
+      }
+
+      "return an empty list if no script are applied" in {
+
+        val allScripts = for {
+          _          <- createKeyspace[IO](keySpace)
+          _          <- createFrameTable[IO](keySpace)
+          allScripts <- getAllScripts[IO](keySpace)
+        } yield allScripts
+
+        allScripts.rightValue shouldBe empty
+      }
+
+      "return an Error if some problem prevent to get the result" in {
+
+        val appliedScripts = getAllScripts[IO](keySpace)
+
+        appliedScripts.leftValue shouldBe a[OperationError]
       }
     }
   }

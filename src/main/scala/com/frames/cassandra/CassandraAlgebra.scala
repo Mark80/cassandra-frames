@@ -36,12 +36,18 @@ object CassandraAlgebra extends ResourceDelay {
         .map(FramesOps.toAppliedScript)
     }()
 
+  def executeQuery[F[_]](query: String)(implicit sync: Sync[F], sessionResource: Resource[F, Session]): ErrorOr[F, OperationResult] =
+    withResourceDelay[F, Session, OperationResult] { session =>
+      session.execute(query)
+      QueryExecuted
+    }()
+
   def insertAppliedScript[F[_]](
       keySpace: String,
       appliedScript: AppliedScript
   )(implicit sync: Sync[F], sessionResource: Resource[F, Session]): ErrorOr[F, OperationResult] =
     withResourceDelay[F, Session, OperationResult] { session =>
       session.execute(FramesOps.boundInsertStatement(FramesOps.insertStatement(keySpace, appliedScript.success), appliedScript)(session))
-      ScriptApplied
+      FrameCreated
     }()
 }

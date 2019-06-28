@@ -84,7 +84,7 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with Eith
 
       "return last success applied script" in {
 
-        val lastScriptApplied = for {
+        val lastScriptApplied: EitherT[IO, OperationError, Option[AppliedScript]] = for {
           _                 <- createKeyspace[IO](keySpace)
           _                 <- createFrameTable[IO](keySpace)
           _                 <- insertAppliedScript[IO](keySpace, mockAppliedScript(1))

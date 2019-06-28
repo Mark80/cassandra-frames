@@ -7,14 +7,19 @@ class LoggerSpec extends WordSpec with Matchers {
 
   type StateLogger[A] = State[String, A]
 
-  implicit val testLogger = new Logger[StateLogger] {
+  implicit val testLogger: Logger[StateLogger] = new Logger[StateLogger] {
 
-    def info(message: String): StateLogger[Unit] =
+    private def newState(message: String): StateLogger[Unit] =
       State(s => (s + message, Unit))
 
-    def error(message: String): StateLogger[Unit] = ???
+    def info(message: => String): StateLogger[Unit] =
+      newState(message)
 
-    def debug(message: String): StateLogger[Unit] = ???
+    def error(message: => String): StateLogger[Unit] =
+      newState(message)
+
+    def debug(message: => String): StateLogger[Unit] =
+      newState(message)
   }
 
   "Logger" should {

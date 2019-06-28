@@ -11,9 +11,9 @@ trait ResourceDelay {
     ErrorOr(
       resource
         .use(
-          session =>
+          value =>
             sync
-              .delay(Try(block(session)) match {
+              .delay(Try(block(value)) match {
                 case Failure(ex) =>
                   Left(
                     if (pf.isDefinedAt(ex)) pf(ex)
@@ -23,5 +23,11 @@ trait ResourceDelay {
               })
         )
     )
+
+  def withDelay[F[_], A](block: => A)(implicit sync: Sync[F]): ErrorOr[F, A] =
+    ErrorOr[F, A](sync.delay(Try(block) match {
+      case Failure(ex)    => Left(CustomError(ex.getMessage))
+      case Success(value) => Right(value)
+    }))
 
 }

@@ -1,0 +1,1 @@
+INSERT INTO table; VALUES(1, 2, 4);

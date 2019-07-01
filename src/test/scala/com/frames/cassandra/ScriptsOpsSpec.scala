@@ -108,7 +108,7 @@ class ScriptsOpsSpec extends WordSpec with Matchers with AlgebraFixture with Eit
 
         val map: Map[String, List[String]] = result.rightValue
         map("V1_script_name.cql") should have size 1
-        map("V3_script_with_separator.cql") should have size 4
+        map("V3_script_with_separator.cql") should have size 5
       }
     }
   }

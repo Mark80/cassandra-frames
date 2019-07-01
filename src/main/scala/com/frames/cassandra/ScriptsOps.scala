@@ -11,6 +11,8 @@ case class CqlFile(name: String, body: Source)
 
 object ScriptsOps extends ResourceDelay {
 
+  val QueryScriptRegex = "\\s*;\\s*(?=([^']*'[^']*')*[^']*$)"
+
   def loadScripts[F[_]](scriptsFolder: String = Config.DefaultScriptFolder)(implicit sync: Sync[F]): ErrorOr[F, List[CqlFile]] =
     withDelay {
       Option(getClass.getResource(scriptsFolder))
@@ -29,7 +31,7 @@ object ScriptsOps extends ResourceDelay {
         .mapValues { files =>
           for {
             file      <- files
-            statement <- file.body.mkString.split("(;\\n)").toList
+            statement <- file.body.mkString.split(QueryScriptRegex).toList
           } yield statement
         }
     }

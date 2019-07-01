@@ -20,21 +20,21 @@ class ScriptsOpsSpec extends WordSpec with Matchers with AlgebraFixture with Eit
 
         ScriptsOps
           .loadScripts[IO](notExistingFolder)
-          .rightValue shouldBe Nil
+          .rightValue shouldBe empty
       }
 
       "folder is empty" in {
 
         ScriptsOps
           .loadScripts[IO](customEmptyFolder)
-          .rightValue shouldBe Nil
+          .rightValue shouldBe empty
       }
 
       "folder not contains files with .cql extensions " in {
 
         ScriptsOps
           .loadScripts[IO](folderWithoutCql)
-          .rightValue shouldBe Nil
+          .rightValue shouldBe empty
       }
     }
 
@@ -85,7 +85,7 @@ class ScriptsOpsSpec extends WordSpec with Matchers with AlgebraFixture with Eit
           res     <- ScriptsOps.getScriptWithChangedSource[IO](scripts, applied)
         } yield res
 
-        result.rightValue shouldBe Nil
+        result.rightValue shouldBe empty
       }
 
       "no files are previously applied" in {
@@ -95,7 +95,7 @@ class ScriptsOpsSpec extends WordSpec with Matchers with AlgebraFixture with Eit
           res     <- ScriptsOps.getScriptWithChangedSource[IO](scripts, Nil)
         } yield res
 
-        result.rightValue shouldBe Nil
+        result.rightValue shouldBe empty
       }
     }
 
@@ -108,7 +108,10 @@ class ScriptsOpsSpec extends WordSpec with Matchers with AlgebraFixture with Eit
 
         val map: Map[String, List[String]] = result.rightValue
         map("V1_script_name.cql") should have size 1
-        map("V3_script_with_separator.cql") should have size 5
+
+        val v3Script = map("V3_script_with_separator.cql")
+        v3Script should have size 5
+        v3Script(3) shouldBe "-- last insert\nINSERT INTO\ntable\n(c1, c2, c3)\nvalues\n('qwe; & kdij',\n 1,\n 'othe;era')"
       }
     }
   }

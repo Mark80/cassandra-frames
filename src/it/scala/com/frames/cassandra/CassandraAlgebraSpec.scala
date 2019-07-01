@@ -73,27 +73,27 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with Eith
     "schema table is empty" should {
       "return None" in {
 
-        val lastScriptApplied = for {
-          _                 <- createKeyspace[IO](keySpace)
-          _                 <- createFrameTable[IO](keySpace)
-          lastScriptApplied <- getLastScriptApplied[IO](keySpace)
-        } yield lastScriptApplied
+        val lastScriptExecutedWithSuccess = for {
+          _                             <- createKeyspace[IO](keySpace)
+          _                             <- createFrameTable[IO](keySpace)
+          lastScriptExecutedWithSuccess <- getLastSuccessfulExecutedScript[IO](keySpace)
+        } yield lastScriptExecutedWithSuccess
 
-        lastScriptApplied.rightValue shouldBe None
+        lastScriptExecutedWithSuccess.rightValue shouldBe None
       }
 
       "return last success applied script" in {
 
-        val lastScriptApplied: EitherT[IO, OperationError, Option[AppliedScript]] = for {
-          _                 <- createKeyspace[IO](keySpace)
-          _                 <- createFrameTable[IO](keySpace)
-          _                 <- insertAppliedScript[IO](keySpace, mockAppliedScript(1))
-          _                 <- insertAppliedScript[IO](keySpace, mockAppliedScript(2))
-          _                 <- insertAppliedScript[IO](keySpace, mockAppliedScript(3, success = false, Some("error")))
-          lastScriptApplied <- getLastScriptApplied[IO](keySpace)
-        } yield lastScriptApplied
+        val lastScriptExecutedWithSuccess: EitherT[IO, OperationError, Option[ExecutedScript]] = for {
+          _                             <- createKeyspace[IO](keySpace)
+          _                             <- createFrameTable[IO](keySpace)
+          _                             <- insertExecutedScript[IO](keySpace, mockAppliedScript(1))
+          _                             <- insertExecutedScript[IO](keySpace, mockAppliedScript(2))
+          _                             <- insertExecutedScript[IO](keySpace, mockAppliedScript(3, success = false, Some("error")))
+          lastScriptExecutedWithSuccess <- getLastSuccessfulExecutedScript[IO](keySpace)
+        } yield lastScriptExecutedWithSuccess
 
-        lastScriptApplied.rightValue.value shouldBe AppliedScript(
+        lastScriptExecutedWithSuccess.rightValue.value shouldBe ExecutedScript(
           2,
           "V2_script.cql",
           md5("body_2"),
@@ -107,15 +107,15 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with Eith
 
     "insertTestRecord" should {
       "insert new record in frames table" in {
-        val lastScriptApplied = for {
-          _                 <- createKeyspace[IO](keySpace)
-          _                 <- createFrameTable[IO](keySpace)
-          insertResult      <- insertAppliedScript[IO](keySpace, mockAppliedScript(1))
-          lastScriptApplied <- getLastScriptApplied[IO](keySpace)
-        } yield (insertResult, lastScriptApplied)
+        val lastScriptExecutedWithSuccess = for {
+          _                             <- createKeyspace[IO](keySpace)
+          _                             <- createFrameTable[IO](keySpace)
+          insertResult                  <- insertExecutedScript[IO](keySpace, mockAppliedScript(1))
+          lastScriptExecutedWithSuccess <- getLastSuccessfulExecutedScript[IO](keySpace)
+        } yield (insertResult, lastScriptExecutedWithSuccess)
 
-        lastScriptApplied.rightValue shouldBe (FrameCreated, Some(
-          AppliedScript(1, "V1_script.cql", md5("body_1"), LocalDate.now().format(DateTimeFormatter.ISO_DATE), None, success = true, 10L)
+        lastScriptExecutedWithSuccess.rightValue shouldBe (FrameCreated, Some(
+          ExecutedScript(1, "V1_script.cql", md5("body_1"), LocalDate.now().format(DateTimeFormatter.ISO_DATE), None, success = true, 10L)
         ))
       }
     }
@@ -143,21 +143,21 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with Eith
       }
     }
 
-    "retrieving applied script" should {
+    "retrieving executed script" should {
 
-      "return the list of applied script" in {
+      "return the list of executed script" in {
 
         val allScripts = for {
           _          <- createKeyspace[IO](keySpace)
           _          <- createFrameTable[IO](keySpace)
-          _          <- insertAppliedScript[IO](keySpace, mockAppliedScript(1))
-          _          <- insertAppliedScript[IO](keySpace, mockAppliedScript(2))
-          _          <- insertAppliedScript[IO](keySpace, mockAppliedScript(3, success = false, Some("error")))
-          allScripts <- getAllScripts[IO](keySpace)
+          _          <- insertExecutedScript[IO](keySpace, mockAppliedScript(1))
+          _          <- insertExecutedScript[IO](keySpace, mockAppliedScript(2))
+          _          <- insertExecutedScript[IO](keySpace, mockAppliedScript(3, success = false, Some("error")))
+          allScripts <- getExecutedScripts[IO](keySpace)
         } yield allScripts
 
         val expectedScripts = List(
-          AppliedScript(
+          ExecutedScript(
             1,
             "V1_script.cql",
             md5("body_1"),
@@ -166,7 +166,7 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with Eith
             success = true,
             10L
           ),
-          AppliedScript(
+          ExecutedScript(
             2,
             "V2_script.cql",
             md5("body_2"),
@@ -175,7 +175,7 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with Eith
             success = true,
             10L
           ),
-          AppliedScript(
+          ExecutedScript(
             3,
             "V3_script.cql",
             md5("body_3"),
@@ -195,7 +195,7 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with Eith
         val allScripts = for {
           _          <- createKeyspace[IO](keySpace)
           _          <- createFrameTable[IO](keySpace)
-          allScripts <- getAllScripts[IO](keySpace)
+          allScripts <- getExecutedScripts[IO](keySpace)
         } yield allScripts
 
         allScripts.rightValue shouldBe empty
@@ -203,9 +203,9 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with Eith
 
       "return an Error if some problem prevent to get the result" in {
 
-        val appliedScripts = getAllScripts[IO](keySpace)
+        val executedScripts = getExecutedScripts[IO](keySpace)
 
-        appliedScripts.leftValue shouldBe a[OperationError]
+        executedScripts.leftValue shouldBe a[OperationError]
       }
     }
   }
@@ -217,5 +217,5 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with Eith
     EitherT.pure(clusterResource.use(cluster => IO(Option(cluster.getMetadata.getKeyspace(keyspace).getTable(table)).isDefined)).unsafeRunSync())
 
   private def mockAppliedScript(version: Long, success: Boolean = true, errorMessage: Option[String] = None) =
-    AppliedScript(version, s"V${version}_script.cql", md5(s"body_$version"), "2019-01-01", errorMessage, success, 10)
+    ExecutedScript(version, s"V${version}_script.cql", md5(s"body_$version"), "2019-01-01", errorMessage, success, 10)
 }

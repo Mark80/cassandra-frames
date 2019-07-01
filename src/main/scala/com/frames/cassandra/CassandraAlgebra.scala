@@ -25,25 +25,27 @@ object CassandraAlgebra extends ResourceDelay {
       case _: AlreadyExistsException => KeyspaceAlreadyExists
     }
 
-  def getAllScripts[F[_]](keySpace: String)(implicit sync: Sync[F], sessionResource: Resource[F, Session]): ErrorOr[F, List[AppliedScript]] =
-    withResourceDelay[F, Session, List[AppliedScript]] { session =>
+  def getExecutedScripts[F[_]](keySpace: String)(implicit sync: Sync[F], sessionResource: Resource[F, Session]): ErrorOr[F, List[ExecutedScript]] =
+    withResourceDelay[F, Session, List[ExecutedScript]] { session =>
       session
-        .execute(FramesOps.getAllScripts(keySpace))
+        .execute(FramesOps.getExecutedScripts(keySpace))
         .iterator()
         .asScala
         .toList
-        .map(FramesOps.toAppliedScript)
+        .map(FramesOps.toExecutedScript)
     }()
 
-  def getLastScriptApplied[F[_]](keySpace: String)(implicit sync: Sync[F], sessionResource: Resource[F, Session]): ErrorOr[F, Option[AppliedScript]] =
-    withResourceDelay[F, Session, Option[AppliedScript]] { session =>
+  def getLastSuccessfulExecutedScript[F[_]](
+      keySpace: String
+  )(implicit sync: Sync[F], sessionResource: Resource[F, Session]): ErrorOr[F, Option[ExecutedScript]] =
+    withResourceDelay[F, Session, Option[ExecutedScript]] { session =>
       session
-        .execute(FramesOps.getAppliedScripts(keySpace))
+        .execute(FramesOps.getSuccessfulExecutedScripts(keySpace))
         .iterator()
         .asScala
         .toList
         .headOption
-        .map(FramesOps.toAppliedScript)
+        .map(FramesOps.toExecutedScript)
     }()
 
   def executeQuery[F[_]](query: String)(implicit sync: Sync[F], sessionResource: Resource[F, Session]): ErrorOr[F, OperationResult] =
@@ -52,12 +54,12 @@ object CassandraAlgebra extends ResourceDelay {
       QueryExecuted
     }()
 
-  def insertAppliedScript[F[_]](
+  def insertExecutedScript[F[_]](
       keySpace: String,
-      appliedScript: AppliedScript
+      executedScript: ExecutedScript
   )(implicit sync: Sync[F], sessionResource: Resource[F, Session]): ErrorOr[F, OperationResult] =
     withResourceDelay[F, Session, OperationResult] { session =>
-      session.execute(FramesOps.boundInsertStatement(FramesOps.insertStatement(keySpace, appliedScript.success), appliedScript)(session))
+      session.execute(FramesOps.boundInsertStatement(FramesOps.insertStatement(keySpace, executedScript.success), executedScript)(session))
       FrameCreated
     }()
 }

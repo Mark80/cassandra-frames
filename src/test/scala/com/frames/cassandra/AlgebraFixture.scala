@@ -2,8 +2,8 @@ package com.frames.cassandra
 
 trait AlgebraFixture {
 
-  def mockAppliedScript(version: Long, fileName: String, checksum: String, success: Boolean = true, errorMessage: Option[String]) =
-    AppliedScript(
+  def mockExecutedScript(version: Long, fileName: String, checksum: String, success: Boolean = true, errorMessage: Option[String]) =
+    ExecutedScript(
       version = version,
       fileName = fileName,
       checksum = checksum,

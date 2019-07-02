@@ -12,22 +12,30 @@ object ScriptsOps extends ResourceDelay {
 
   val QueryScriptRegex = "\\s*;\\s*(?=([^']*'[^']*')*[^']*$)"
 
-  def generateSource[F[_]](file: File)(implicit sync: Sync[F]): Resource[F, Source] =
+  def generateSource[F[_]](file: File)(implicit sync: Sync[F]): Resource[F, CqlResource] =
     Resource
-      .fromAutoCloseable(sync.delay(Source.fromFile(file)))
+      .fromAutoCloseable(sync.delay(CqlResource(file.getName, Source.fromFile(file))))
 
-  def loadScripts[F[_]](scriptsFolder: String = Config.DefaultScriptFolder)(implicit sync: Sync[F]): ErrorOr[F, List[Resource[F, Source]]] =
-    withDelay {
-      Option(getClass.getResource(scriptsFolder))
-        .map(url => new File(url.getPath))
-        .map(folder => getCqlFiles(folder))
-        .transpose
-        .flatten
-        .toList
-        .map(generateSource)
-    } {
-      case _: Throwable => ScriptsLoadingFailed
-    } //.map(files => files.map(file => generateSource(file).use(source => sync.suspend(CqlFile(file.getName, source.mkString)))))
+  def useCqlResource[F[_]](resource: Resource[F, CqlResource])(implicit sync: Sync[F]): ErrorOr[F, CqlFile] =
+    useResourceWithDelay { cqlResource: CqlResource =>
+      CqlFile(cqlResource.name, cqlResource.getContent())
+    }()(sync, resource)
+
+  def loadScripts[F[_]](scriptsFolder: String = Config.DefaultScriptFolder)(implicit sync: Sync[F]): ErrorOr[F, List[CqlFile]] = {
+    val resource = getClass.getResource(scriptsFolder)
+    val files    = new File(resource.getPath).listFiles().toList
+
+    files.foldLeft(ErrorOr.apply(sync.pure(Right(List.empty[CqlFile]): Either[OperationError, List[CqlFile]]))) { (acc, file) =>
+      val resource   = generateSource(file)
+      val singleFile = useCqlResource(resource)
+
+      for {
+        s  <- singleFile
+        ac <- acc
+      } yield s :: ac
+    }
+
+  }
 
   def splitScriptSource[F[_]](files: List[CqlFile])(implicit sync: Sync[F]): ErrorOr[F, Map[String, List[String]]] =
     withDelay {
@@ -64,5 +72,12 @@ object ScriptsOps extends ResourceDelay {
     tuple._2.forall(sourceBody => {
       tuple._1.checksum != FramesOps.md5(sourceBody)
     })
+
+}
+
+case class CqlResource(name: String, source: Source) extends AutoCloseable {
+
+  def close(): Unit = source.close()
+  def getContent()  = source.mkString
 
 }

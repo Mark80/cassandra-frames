@@ -59,8 +59,8 @@ class ScriptsOpsSpec extends WordSpec with Matchers with AlgebraFixture with Eit
 
       val applied =
         List(
-          mockExecutedScript(1, "V1_script_name.cql", ScriptsOps.md5("ADD TABLE1"), success = true, None),
-          mockExecutedScript(2, "V2_script_name.cql", ScriptsOps.md5("ADD TABLE2"), success = true, None)
+          mockExecutedScript(1, "V1_script_name.cql", FramesOps.md5("ADD TABLE1"), success = true, None),
+          mockExecutedScript(2, "V2_script_name.cql", FramesOps.md5("ADD TABLE2"), success = true, None)
         )
 
       val result = for {
@@ -76,8 +76,8 @@ class ScriptsOpsSpec extends WordSpec with Matchers with AlgebraFixture with Eit
 
         val applied =
           List(
-            mockExecutedScript(1, "V1_script_name.cql", ScriptsOps.md5("ADD TABLE1"), success = true, None),
-            mockExecutedScript(2, "V2_script_name.cql", ScriptsOps.md5("ADD TABLE2"), success = true, None)
+            mockExecutedScript(1, "V1_script_name.cql", FramesOps.md5("ADD TABLE1"), success = true, None),
+            mockExecutedScript(2, "V2_script_name.cql", FramesOps.md5("ADD TABLE2"), success = true, None)
           )
 
         val result = for {
@@ -99,17 +99,19 @@ class ScriptsOpsSpec extends WordSpec with Matchers with AlgebraFixture with Eit
       }
     }
 
-    "splitScriptSource" should {
+    "splitScriptSource" when {
       "split in single queries the source body event with char separator inside line and script on multiple line" in {
         val result = for {
           scripts <- ScriptsOps.loadScripts[IO](Config.DefaultScriptFolder)
           queries <- ScriptsOps.splitScriptSource[IO](scripts)
         } yield queries
 
-        val map: Map[String, List[String]] = result.rightValue
-        map("V1_script_name.cql") should have size 1
+        val mValue = result.rightValue
+        println(mValue)
+        println(mValue)
+        mValue("V1_script_name.cql") should have size 1
 
-        val v3Script = map("V3_script_with_separator.cql")
+        val v3Script = mValue("V3_script_with_separator.cql")
         v3Script should have size 5
         v3Script(3) shouldBe "-- last insert\nINSERT INTO\ntable\n(c1, c2, c3)\nvalues\n('qwe; & kdij',\n 1,\n 'othe;era')"
       }

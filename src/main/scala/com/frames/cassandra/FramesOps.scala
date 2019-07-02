@@ -1,4 +1,5 @@
 package com.frames.cassandra
+import java.security.MessageDigest
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -72,5 +73,8 @@ object FramesOps {
 
     appliedScript.errorMessage.foreach(error => boundStatement.setString(FramesField.ErrorMessage, error))
     boundStatement.bind()
-  }
+  }.bind()
+
+  def md5(s: String): String =
+    MessageDigest.getInstance("MD5").digest(s.getBytes).mkString
 }

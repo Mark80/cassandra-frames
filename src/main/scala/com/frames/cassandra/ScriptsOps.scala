@@ -11,8 +11,8 @@ case class CqlFile(name: String, body: Source)
 
 object ScriptsOps {
 
-  type CqlResource[F[_]]           = Resource[F, List[CqlFile]]
-  type AppliedScriptResource[F[_]] = Resource[F, List[ExecutedScript]]
+  type CqlResource[F[_]]            = Resource[F, List[CqlFile]]
+  type ExecutedScriptResource[F[_]] = Resource[F, List[ExecutedScript]]
 
   def loadScripts[F[_]](scriptsFolder: String = Config.DefaultScriptFolder)(implicit sync: Sync[F]): CqlResource[F] =
     Resource
@@ -31,21 +31,21 @@ object ScriptsOps {
   private def getCqlFiles(folder: File): List[File] =
     folder.listFiles(_.getName.endsWith(".cql")).toList
 
-  def getVariationInScriptResources[F[_]](scriptFiles: List[CqlFile], appliedScripts: List[ExecutedScript])(
+  def getVariationInScriptResources[F[_]](scriptFiles: List[CqlFile], executedScripts: List[ExecutedScript])(
       implicit sync: Sync[F]
   ): F[List[ExecutedScript]] =
     sync.delay(
-      appliedScripts
+      executedScripts
         .map(applied => toTupleWithFileBody(applied, scriptFiles))
         .filter(hasDifferentChecksum)
         .map(_._1)
     )
 
-  private def toTupleWithFileBody(appliedScript: ExecutedScript, scriptFiles: List[CqlFile]) =
-    (appliedScript, getRelativeScriptFile(appliedScript.fileName, scriptFiles))
+  private def toTupleWithFileBody(executedScript: ExecutedScript, scriptFiles: List[CqlFile]) =
+    (executedScript, getRelativeScriptFile(executedScript.fileName, scriptFiles))
 
-  private def getRelativeScriptFile(appliedScriptName: String, scriptFiles: List[CqlFile]) =
-    scriptFiles.find(script => script.name == appliedScriptName).map(_.body)
+  private def getRelativeScriptFile(executedScriptName: String, scriptFiles: List[CqlFile]) =
+    scriptFiles.find(script => script.name == executedScriptName).map(_.body)
 
   private def hasDifferentChecksum(tuple: (ExecutedScript, Option[Source])) =
     tuple._2.forall(sourceBody => {

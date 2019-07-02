@@ -87,9 +87,9 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with Eith
         val lastScriptExecutedWithSuccess: EitherT[IO, OperationError, Option[ExecutedScript]] = for {
           _                             <- createKeyspace[IO](keySpace)
           _                             <- createFrameTable[IO](keySpace)
-          _                             <- insertExecutedScript[IO](keySpace, mockAppliedScript(1))
-          _                             <- insertExecutedScript[IO](keySpace, mockAppliedScript(2))
-          _                             <- insertExecutedScript[IO](keySpace, mockAppliedScript(3, success = false, Some("error")))
+          _                             <- insertExecutedScript[IO](keySpace, mockExecutedScript(1))
+          _                             <- insertExecutedScript[IO](keySpace, mockExecutedScript(2))
+          _                             <- insertExecutedScript[IO](keySpace, mockExecutedScript(3, success = false, Some("error")))
           lastScriptExecutedWithSuccess <- getLastSuccessfulExecutedScript[IO](keySpace)
         } yield lastScriptExecutedWithSuccess
 
@@ -110,7 +110,7 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with Eith
         val lastScriptExecutedWithSuccess = for {
           _                             <- createKeyspace[IO](keySpace)
           _                             <- createFrameTable[IO](keySpace)
-          insertResult                  <- insertExecutedScript[IO](keySpace, mockAppliedScript(1))
+          insertResult                  <- insertExecutedScript[IO](keySpace, mockExecutedScript(1))
           lastScriptExecutedWithSuccess <- getLastSuccessfulExecutedScript[IO](keySpace)
         } yield (insertResult, lastScriptExecutedWithSuccess)
 
@@ -147,44 +147,20 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with Eith
 
       "return the list of executed script" in {
 
+        val script1 = mockExecutedScript(1)
+        val script2 = mockExecutedScript(2)
+        val script3 = mockExecutedScript(3, success = false, Some("error"))
+
         val allScripts = for {
           _          <- createKeyspace[IO](keySpace)
           _          <- createFrameTable[IO](keySpace)
-          _          <- insertExecutedScript[IO](keySpace, mockAppliedScript(1))
-          _          <- insertExecutedScript[IO](keySpace, mockAppliedScript(2))
-          _          <- insertExecutedScript[IO](keySpace, mockAppliedScript(3, success = false, Some("error")))
+          _          <- insertExecutedScript[IO](keySpace, script1)
+          _          <- insertExecutedScript[IO](keySpace, script2)
+          _          <- insertExecutedScript[IO](keySpace, script3)
           allScripts <- getExecutedScripts[IO](keySpace)
         } yield allScripts
 
-        val expectedScripts = List(
-          ExecutedScript(
-            1,
-            "V1_script.cql",
-            md5("body_1"),
-            LocalDate.now().format(DateTimeFormatter.ISO_DATE),
-            None,
-            success = true,
-            10L
-          ),
-          ExecutedScript(
-            2,
-            "V2_script.cql",
-            md5("body_2"),
-            LocalDate.now().format(DateTimeFormatter.ISO_DATE),
-            None,
-            success = true,
-            10L
-          ),
-          ExecutedScript(
-            3,
-            "V3_script.cql",
-            md5("body_3"),
-            LocalDate.now().format(DateTimeFormatter.ISO_DATE),
-            None,
-            success = false,
-            10L
-          )
-        )
+        val expectedScripts = List(script1, script2, script3)
 
         allScripts.rightValue should contain theSameElementsAs expectedScripts
 
@@ -216,6 +192,6 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with Eith
   private def checkTable(keyspace: String, table: String): EitherT[IO, OperationError, Boolean] =
     EitherT.pure(clusterResource.use(cluster => IO(Option(cluster.getMetadata.getKeyspace(keyspace).getTable(table)).isDefined)).unsafeRunSync())
 
-  private def mockAppliedScript(version: Long, success: Boolean = true, errorMessage: Option[String] = None) =
-    ExecutedScript(version, s"V${version}_script.cql", md5(s"body_$version"), "2019-01-01", errorMessage, success, 10)
+  private def mockExecutedScript(version: Long, success: Boolean = true, errorMessage: Option[String] = None) =
+    ExecutedScript(version, s"V${version}_script.cql", md5(s"body_$version"), LocalDate.now().toString, errorMessage, success, 10)
 }

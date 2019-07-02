@@ -60,13 +60,17 @@ object FramesOps {
     insertStatement
   }
 
-  def boundInsertStatement(insertStatement: Insert, appliedScript: ExecutedScript)(implicit session: Session): BoundStatement =
-    new BoundStatement(session.prepare(insertStatement))
+  def boundInsertStatement(insertStatement: Insert, appliedScript: ExecutedScript)(implicit session: Session): BoundStatement = {
+
+    val boundStatement = new BoundStatement(session.prepare(insertStatement))
       .setLong(FramesField.Version, appliedScript.version)
       .setString(FramesField.FileName, appliedScript.fileName)
       .setString(FramesField.Checksum, appliedScript.checksum)
       .setString(FramesField.Date, LocalDate.now().format(DateTimeFormatter.ISO_DATE))
       .setBool(FramesField.Success, appliedScript.success)
       .setLong(FramesField.ExecutionTime, appliedScript.executionTime)
-      .bind()
+
+    appliedScript.errorMessage.foreach(error => boundStatement.setString(FramesField.ErrorMessage, error))
+    boundStatement.bind()
+  }
 }

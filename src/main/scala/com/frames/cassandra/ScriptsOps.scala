@@ -1,28 +1,33 @@
 package com.frames.cassandra
 
 import java.io.File
-import java.security.MessageDigest
 
-import cats.effect.Sync
+import cats.effect.{Resource, Sync}
 
 import scala.io.Source
 
-case class CqlFile(name: String, body: Source)
+case class CqlFile(name: String, body: String)
 
 object ScriptsOps extends ResourceDelay {
 
   val QueryScriptRegex = "\\s*;\\s*(?=([^']*'[^']*')*[^']*$)"
 
-  def loadScripts[F[_]](scriptsFolder: String = Config.DefaultScriptFolder)(implicit sync: Sync[F]): ErrorOr[F, List[CqlFile]] =
+  def generateSource[F[_]](file: File)(implicit sync: Sync[F]): Resource[F, Source] =
+    Resource
+      .fromAutoCloseable(sync.delay(Source.fromFile(file)))
+
+  def loadScripts[F[_]](scriptsFolder: String = Config.DefaultScriptFolder)(implicit sync: Sync[F]): ErrorOr[F, List[Resource[F, Source]]] =
     withDelay {
       Option(getClass.getResource(scriptsFolder))
         .map(url => new File(url.getPath))
-        .map(file => getCqlFiles(file))
+        .map(folder => getCqlFiles(folder))
         .transpose
         .flatten
-        .map(file => CqlFile(file.getName, Source.fromFile(file)))
         .toList
-    }
+        .map(generateSource)
+    } {
+      case _: Throwable => ScriptsLoadingFailed
+    } //.map(files => files.map(file => generateSource(file).use(source => sync.suspend(CqlFile(file.getName, source.mkString)))))
 
   def splitScriptSource[F[_]](files: List[CqlFile])(implicit sync: Sync[F]): ErrorOr[F, Map[String, List[String]]] =
     withDelay {
@@ -31,10 +36,10 @@ object ScriptsOps extends ResourceDelay {
         .mapValues { files =>
           for {
             file      <- files
-            statement <- file.body.mkString.split(QueryScriptRegex).toList
+            statement <- file.body.split(QueryScriptRegex).toList
           } yield statement
         }
-    }
+    }()
 
   private def getCqlFiles(folder: File): List[File] =
     folder.listFiles(_.getName.endsWith(".cql")).toList
@@ -47,7 +52,7 @@ object ScriptsOps extends ResourceDelay {
         .map(applied => toTupleWithFileBody(applied, scriptFiles))
         .filter(hasDifferentChecksum)
         .map(_._1)
-    }
+    }()
 
   private def toTupleWithFileBody(appliedScript: AppliedScript, scriptFiles: List[CqlFile]) =
     (appliedScript, getRelativeScriptFile(appliedScript.fileName, scriptFiles))
@@ -55,12 +60,9 @@ object ScriptsOps extends ResourceDelay {
   private def getRelativeScriptFile(appliedScriptName: String, scriptFiles: List[CqlFile]) =
     scriptFiles.find(script => script.name == appliedScriptName).map(_.body)
 
-  private def hasDifferentChecksum(tuple: (AppliedScript, Option[Source])) =
+  private def hasDifferentChecksum(tuple: (AppliedScript, Option[String])) =
     tuple._2.forall(sourceBody => {
-      tuple._1.checksum != md5(sourceBody.mkString)
+      tuple._1.checksum != FramesOps.md5(sourceBody)
     })
-
-  def md5(s: String): String =
-    MessageDigest.getInstance("MD5").digest(s.getBytes).mkString
 
 }

@@ -1,4 +1,5 @@
 package com.frames.cassandra
+import java.security.MessageDigest
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -66,4 +67,7 @@ object FramesOps {
       .setBool(FramesField.Success, appliedScript.success)
       .setLong(FramesField.ExecutionTime, appliedScript.executionTime)
       .bind()
+
+  def md5(s: String): String =
+    MessageDigest.getInstance("MD5").digest(s.getBytes).mkString
 }

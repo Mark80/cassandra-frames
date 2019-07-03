@@ -20,7 +20,7 @@ class ScriptsOpsSpec extends WordSpec with Matchers with AlgebraFixture with Eit
 
         ScriptsOps
           .loadScripts[IO](notExistingFolder)
-          .rightValue shouldBe empty
+          .leftValue shouldBe ScriptFolderNotExists
       }
 
       "folder is empty" in {
@@ -107,13 +107,9 @@ class ScriptsOpsSpec extends WordSpec with Matchers with AlgebraFixture with Eit
         } yield queries
 
         val mValue = result.rightValue
-        println(mValue)
-        println(mValue)
         mValue("V1_script_name.cql") should have size 1
-
-        val v3Script = mValue("V3_script_with_separator.cql")
-        v3Script should have size 5
-        v3Script(3) shouldBe "-- last insert\nINSERT INTO\ntable\n(c1, c2, c3)\nvalues\n('qwe; & kdij',\n 1,\n 'othe;era')"
+        mValue("V3_script_with_separator.cql") should have size 5
+        mValue("V3_script_with_separator.cql")(3) shouldBe "-- last insert\nINSERT INTO\ntable\n(c1, c2, c3)\nvalues\n('qwe; & kdij',\n 1,\n 'othe;era')"
       }
     }
   }

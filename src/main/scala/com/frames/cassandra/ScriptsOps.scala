@@ -2,11 +2,10 @@ package com.frames.cassandra
 
 import java.io.File
 
+import cats.data.EitherT
 import cats.effect.{Resource, Sync}
 
 import scala.io.Source
-
-case class CqlFile(name: String, body: String)
 
 object ScriptsOps extends ResourceDelay {
 
@@ -18,24 +17,24 @@ object ScriptsOps extends ResourceDelay {
 
   def useCqlResource[F[_]](resource: Resource[F, CqlResource])(implicit sync: Sync[F]): ErrorOr[F, CqlFile] =
     useResourceWithDelay { cqlResource: CqlResource =>
-      CqlFile(cqlResource.name, cqlResource.getContent())
+      CqlFile(cqlResource.name, cqlResource.getContent)
     }()(sync, resource)
 
-  def loadScripts[F[_]](scriptsFolder: String = Config.DefaultScriptFolder)(implicit sync: Sync[F]): ErrorOr[F, List[CqlFile]] = {
-    val resource = getClass.getResource(scriptsFolder)
-    val files    = new File(resource.getPath).listFiles().toList
+  def loadScripts[F[_]](scriptsFolder: String = Config.DefaultScriptFolder)(implicit sync: Sync[F]): ErrorOr[F, List[CqlFile]] =
+    Option(getClass.getResource(scriptsFolder)) match {
+      case Some(folder) =>
+        getCqlFiles(new File(folder.getPath))
+          .foldLeft(ErrorOr.apply(sync.pure(Right(List.empty[CqlFile]): Either[OperationError, List[CqlFile]]))) { (accFiles, file) =>
+            val resource   = generateSource(file)
+            val singleFile = useCqlResource(resource)
 
-    files.foldLeft(ErrorOr.apply(sync.pure(Right(List.empty[CqlFile]): Either[OperationError, List[CqlFile]]))) { (acc, file) =>
-      val resource   = generateSource(file)
-      val singleFile = useCqlResource(resource)
-
-      for {
-        s  <- singleFile
-        ac <- acc
-      } yield s :: ac
+            for {
+              source      <- singleFile
+              resultFiles <- accFiles
+            } yield source :: resultFiles
+          }
+      case None => EitherT.fromEither(Left(ScriptFolderNotExists))
     }
-
-  }
 
   def splitScriptSource[F[_]](files: List[CqlFile])(implicit sync: Sync[F]): ErrorOr[F, Map[String, List[String]]] =
     withDelay {
@@ -72,12 +71,5 @@ object ScriptsOps extends ResourceDelay {
     tuple._2.forall(sourceBody => {
       tuple._1.checksum != FramesOps.md5(sourceBody)
     })
-
-}
-
-case class CqlResource(name: String, source: Source) extends AutoCloseable {
-
-  def close(): Unit = source.close()
-  def getContent()  = source.mkString
 
 }

@@ -34,7 +34,7 @@ trait CassandraBaseSpec extends WordSpec with Matchers with BeforeAndAfterEach w
 
   override def afterAll(): Unit =
     (for {
-      _ <- sessionResource.use(session => IO(session.execute(s"DROP KEYSPACE $keySpace")))
+      _ <- sessionResource.use(session => IO(session.execute(s"DROP KEYSPACE IF EXISTS $keySpace")))
       _ <- sessionResource.use(session => IO(session.close()))
       _ <- clusterResource.use(cluster => IO(cluster.close()))
     } yield ()).unsafeRunSync()

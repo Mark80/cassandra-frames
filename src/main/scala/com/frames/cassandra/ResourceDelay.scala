@@ -14,11 +14,7 @@ trait ResourceDelay {
           session =>
             sync
               .delay(Try(block(session)) match {
-                case Failure(ex) =>
-                  Left(
-                    if (pf.isDefinedAt(ex)) pf(ex)
-                    else CustomError(ex.getMessage)
-                  )
+                case Failure(ex)    => Left(pf.applyOrElse(ex, (_: Throwable) => CustomError(ex.getMessage)))
                 case Success(value) => Right(value)
               })
         )

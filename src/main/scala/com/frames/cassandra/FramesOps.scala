@@ -15,7 +15,7 @@ object FramesField {
   val ErrorMessage  = "error_message"
 }
 
-case class AppliedScript(
+case class ExecutedScript(
     version: Long,
     fileName: String,
     checksum: String,
@@ -29,11 +29,14 @@ object FramesOps {
 
   import FramesField._
 
-  def getAppliedScripts(keyspace: String): String =
+  def getSuccessfulExecutedScripts(keyspace: String): String =
     s"SELECT * FROM $keyspace.frames_table WHERE success = true ALLOW FILTERING"
 
-  def toAppliedScript(row: Row): AppliedScript =
-    AppliedScript(
+  def getExecutedScripts(keyspace: String): String =
+    s"SELECT * FROM $keyspace.frames_table"
+
+  def toExecutedScript(row: Row): ExecutedScript =
+    ExecutedScript(
       row.getLong(Version),
       row.getString(FileName),
       row.getString(Checksum),
@@ -57,13 +60,17 @@ object FramesOps {
     insertStatement
   }
 
-  def boundInsertStatement(insertStatement: Insert, appliedScript: AppliedScript)(implicit session: Session): BoundStatement =
-    new BoundStatement(session.prepare(insertStatement))
+  def boundInsertStatement(insertStatement: Insert, appliedScript: ExecutedScript)(implicit session: Session): BoundStatement = {
+
+    val boundStatement = new BoundStatement(session.prepare(insertStatement))
       .setLong(FramesField.Version, appliedScript.version)
       .setString(FramesField.FileName, appliedScript.fileName)
       .setString(FramesField.Checksum, appliedScript.checksum)
       .setString(FramesField.Date, LocalDate.now().format(DateTimeFormatter.ISO_DATE))
       .setBool(FramesField.Success, appliedScript.success)
       .setLong(FramesField.ExecutionTime, appliedScript.executionTime)
-      .bind()
+
+    appliedScript.errorMessage.foreach(error => boundStatement.setString(FramesField.ErrorMessage, error))
+    boundStatement.bind()
+  }
 }

@@ -11,9 +11,9 @@ trait ResourceDelay {
     ErrorOr(
       resource
         .use(
-          value =>
+          A =>
             sync
-              .delay(Try(block(value)) match {
+              .delay(Try(block(A)) match {
                 case Failure(ex) =>
                   Left(
                     if (pf.isDefinedAt(ex)) pf(ex)

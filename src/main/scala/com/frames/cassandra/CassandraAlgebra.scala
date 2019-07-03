@@ -28,7 +28,7 @@ object CassandraAlgebra extends ResourceDelay {
   def getExecutedScripts[F[_]](keySpace: String)(implicit sync: Sync[F], sessionResource: Resource[F, Session]): ErrorOr[F, List[ExecutedScript]] =
     useResourceWithDelay[F, Session, List[ExecutedScript]] { session =>
       session
-        .execute(FramesOps.getExecutedScripts(keySpace))
+        .execute(FramesOps.getExecutedStatement(keySpace))
         .iterator()
         .asScala
         .toList
@@ -40,7 +40,7 @@ object CassandraAlgebra extends ResourceDelay {
   )(implicit sync: Sync[F], sessionResource: Resource[F, Session]): ErrorOr[F, Option[ExecutedScript]] =
     useResourceWithDelay[F, Session, Option[ExecutedScript]] { session =>
       session
-        .execute(FramesOps.getSuccessfulExecutedScripts(keySpace))
+        .execute(FramesOps.getSuccessfulExecutedStatement(keySpace))
         .iterator()
         .asScala
         .toList

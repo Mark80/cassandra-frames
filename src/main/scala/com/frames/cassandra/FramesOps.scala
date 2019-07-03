@@ -30,10 +30,10 @@ object FramesOps {
 
   import FramesField._
 
-  def getSuccessfulExecutedScripts(keyspace: String): String =
+  def getSuccessfulExecutedStatement(keyspace: String): String =
     s"SELECT * FROM $keyspace.frames_table WHERE success = true ALLOW FILTERING"
 
-  def getExecutedScripts(keyspace: String): String =
+  def getExecutedStatement(keyspace: String): String =
     s"SELECT * FROM $keyspace.frames_table"
 
   def toExecutedScript(row: Row): ExecutedScript =

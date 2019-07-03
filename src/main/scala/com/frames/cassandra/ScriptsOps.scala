@@ -25,15 +25,12 @@ object ScriptsOps extends ResourceDelay {
       case Some(folder) =>
         getCqlFiles(new File(folder.getPath))
           .foldLeft(ErrorOr.apply(sync.pure(Right(List.empty[CqlFile]): Either[OperationError, List[CqlFile]]))) { (accFiles, file) =>
-            val resource   = generateSource(file)
-            val singleFile = useCqlResource(resource)
-
             for {
-              source      <- singleFile
+              source      <- useCqlResource(generateSource(file))
               resultFiles <- accFiles
             } yield source :: resultFiles
           }
-      case None => EitherT.fromEither(Left(ScriptFolderNotExists))
+      case None => EitherT.fromEither(Left(ScriptFolderNotExists(scriptsFolder)))
     }
 
   def splitScriptSource[F[_]](files: List[CqlFile])(implicit sync: Sync[F]): ErrorOr[F, Map[String, List[String]]] =

@@ -18,9 +18,11 @@ class ScriptsOpsSpec extends WordSpec with Matchers with AlgebraFixture with Eit
 
       "folder not exists" in {
 
-        ScriptsOps
+        val result = ScriptsOps
           .loadScripts[IO](notExistingFolder)
-          .leftValue shouldBe ScriptFolderNotExists
+          .leftValue
+
+        result shouldBe ScriptFolderNotExists(notExistingFolder)
       }
 
       "folder is empty" in {

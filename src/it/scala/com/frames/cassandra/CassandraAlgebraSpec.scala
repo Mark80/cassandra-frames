@@ -17,7 +17,7 @@ class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with Eith
   override def keySpace: String = "keyspace_name"
 
   import CassandraAlgebra._
-  import ScriptsOps._
+  import FramesOps._
 
   "CassandraAlgebra" when {
 

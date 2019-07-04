@@ -1,4 +1,5 @@
 package com.frames.cassandra
+import java.security.MessageDigest
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -29,10 +30,10 @@ object FramesOps {
 
   import FramesField._
 
-  def getSuccessfulExecutedScripts(keyspace: String): String =
+  def getSuccessfulExecutedStatement(keyspace: String): String =
     s"SELECT * FROM $keyspace.frames_table WHERE success = true ALLOW FILTERING"
 
-  def getExecutedScripts(keyspace: String): String =
+  def getExecutedStatement(keyspace: String): String =
     s"SELECT * FROM $keyspace.frames_table"
 
   def toExecutedScript(row: Row): ExecutedScript =
@@ -72,5 +73,8 @@ object FramesOps {
 
     appliedScript.errorMessage.foreach(error => boundStatement.setString(FramesField.ErrorMessage, error))
     boundStatement.bind()
-  }
+  }.bind()
+
+  def md5(s: String): String =
+    MessageDigest.getInstance("MD5").digest(s.getBytes).mkString
 }

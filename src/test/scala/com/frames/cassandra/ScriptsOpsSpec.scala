@@ -1,9 +1,10 @@
 package com.frames.cassandra
 
-import cats.effect.{IO, Resource}
+import cats.effect.IO
+import com.frames.cassandra.utils.EitherTValues
 import org.scalatest.{Matchers, WordSpec}
 
-class ScriptsOpsSpec extends WordSpec with Matchers with AlgebraFixture {
+class ScriptsOpsSpec extends WordSpec with Matchers with AlgebraFixture with EitherTValues {
 
   "ScriptsOpsSpec" should {
 
@@ -17,26 +18,25 @@ class ScriptsOpsSpec extends WordSpec with Matchers with AlgebraFixture {
 
       "folder not exists" in {
 
-        ScriptsOps
+        val result = ScriptsOps
           .loadScripts[IO](notExistingFolder)
-          .use(res => IO(res))
-          .unsafeRunSync() shouldBe Nil
+          .leftValue
+
+        result shouldBe ScriptFolderNotExists(notExistingFolder)
       }
 
       "folder is empty" in {
 
         ScriptsOps
           .loadScripts[IO](customEmptyFolder)
-          .use(res => IO(res))
-          .unsafeRunSync() shouldBe Nil
+          .rightValue shouldBe empty
       }
 
       "folder not contains files with .cql extensions " in {
 
         ScriptsOps
           .loadScripts[IO](folderWithoutCql)
-          .use(res => IO(res))
-          .unsafeRunSync() shouldBe Nil
+          .rightValue shouldBe empty
       }
     }
 
@@ -46,16 +46,14 @@ class ScriptsOpsSpec extends WordSpec with Matchers with AlgebraFixture {
 
         ScriptsOps
           .loadScripts[IO]()
-          .use(res => IO(res))
-          .unsafeRunSync() should have size 2
+          .rightValue should have size 3
       }
 
       "custom folder contains files with .cql extensions " in {
 
         ScriptsOps
           .loadScripts[IO](customNotEmptyFolder)
-          .use(res => IO(res))
-          .unsafeRunSync() should have size 2
+          .rightValue should have size 2
       }
     }
 
@@ -63,16 +61,16 @@ class ScriptsOpsSpec extends WordSpec with Matchers with AlgebraFixture {
 
       val applied =
         List(
-          mockExecutedScript(1, "V1_script_name.cql", ScriptsOps.md5("ADD TABLE1"), success = true, None),
-          mockExecutedScript(2, "V2_script_name.cql", ScriptsOps.md5("ADD TABLE2"), success = true, None)
+          mockExecutedScript(1, "V1_script_name.cql", FramesOps.md5("ADD TABLE1"), success = true, None),
+          mockExecutedScript(2, "V2_script_name.cql", FramesOps.md5("ADD TABLE2"), success = true, None)
         )
 
       val result = for {
         scripts <- ScriptsOps.loadScripts[IO](withChecksumDifference)
-        res     <- Resource.liftF(ScriptsOps.getVariationInScriptResources[IO](scripts, applied))
+        res     <- ScriptsOps.getScriptWithChangedSource[IO](scripts, applied)
       } yield res
 
-      result.use(resources => IO(resources)).unsafeRunSync() should have size 1
+      result.rightValue should have size 1
     }
 
     "return empty list" when {
@@ -80,26 +78,40 @@ class ScriptsOpsSpec extends WordSpec with Matchers with AlgebraFixture {
 
         val applied =
           List(
-            mockExecutedScript(1, "V1_script_name.cql", ScriptsOps.md5("ADD TABLE1"), success = true, None),
-            mockExecutedScript(2, "V2_script_name.cql", ScriptsOps.md5("ADD TABLE2"), success = true, None)
+            mockExecutedScript(1, "V1_script_name.cql", FramesOps.md5("ADD TABLE1"), success = true, None),
+            mockExecutedScript(2, "V2_script_name.cql", FramesOps.md5("ADD TABLE2"), success = true, None)
           )
 
         val result = for {
           scripts <- ScriptsOps.loadScripts[IO]()
-          res     <- Resource.liftF(ScriptsOps.getVariationInScriptResources[IO](scripts, applied))
+          res     <- ScriptsOps.getScriptWithChangedSource[IO](scripts, applied)
         } yield res
 
-        result.use(resources => IO(resources)).unsafeRunSync() shouldBe Nil
+        result.rightValue shouldBe empty
       }
 
       "no files are previously applied" in {
 
         val result = for {
           scripts <- ScriptsOps.loadScripts[IO]()
-          res     <- Resource.liftF(ScriptsOps.getVariationInScriptResources[IO](scripts, Nil))
+          res     <- ScriptsOps.getScriptWithChangedSource[IO](scripts, Nil)
         } yield res
 
-        result.use(resources => IO(resources)).unsafeRunSync() shouldBe Nil
+        result.rightValue shouldBe empty
+      }
+    }
+
+    "splitScriptSource" when {
+      "split in single queries the source body event with char separator inside line and script on multiple line" in {
+        val result = for {
+          scripts <- ScriptsOps.loadScripts[IO](Config.DefaultScriptFolder)
+          queries <- ScriptsOps.splitScriptSource[IO](scripts)
+        } yield queries
+
+        val mValue = result.rightValue
+        mValue("V1_script_name.cql") should have size 1
+        mValue("V3_script_with_separator.cql") should have size 5
+        mValue("V3_script_with_separator.cql")(3) shouldBe "-- last insert\nINSERT INTO\ntable\n(c1, c2, c3)\nvalues\n('qwe; & kdij',\n 1,\n 'othe;era')"
       }
     }
   }

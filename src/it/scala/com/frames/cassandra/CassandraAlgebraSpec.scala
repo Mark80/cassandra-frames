@@ -6,9 +6,9 @@ import java.time.format.DateTimeFormatter
 import cats.data.EitherT
 import cats.effect.IO
 import com.frames.cassandra.utils.EitherTValues
-import org.scalatest.{Matchers, OptionValues}
+import org.scalatest.{Matchers, OptionValues, WordSpec}
 
-class CassandraAlgebraSpec extends CassandraBaseSpec with OptionValues with EitherTValues with Matchers {
+class CassandraAlgebraSpec extends WordSpec with Matchers with CassandraBaseSpec with OptionValues with EitherTValues {
 
   val frameTable = "frames_table"
 

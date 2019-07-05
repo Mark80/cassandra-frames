@@ -2,9 +2,9 @@ package com.frames.cassandra
 
 import cats.effect.{IO, Resource}
 import com.datastax.driver.core.{Cluster, Session}
-import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Matchers, WordSpec}
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Suite}
 
-trait CassandraBaseSpec extends WordSpec with Matchers with BeforeAndAfterEach with BeforeAndAfterAll {
+trait CassandraBaseSpec extends Suite with BeforeAndAfterEach with BeforeAndAfterAll {
 
   implicit val clusterResource: Resource[IO, Cluster] =
     Resource.liftF(IO.pure(Cluster.builder().addContactPoints(Config.CassandraHost: _*).withPort(Config.CassandraPort).build()))

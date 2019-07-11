@@ -1,6 +1,6 @@
 package com.frames.cassandra
 
-import java.time.LocalDate
+import java.time.{Clock, LocalDate}
 import java.time.format.DateTimeFormatter
 
 import cats.data.EitherT
@@ -8,7 +8,7 @@ import cats.effect.IO
 import com.frames.cassandra.utils.EitherTValues
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 
-class CassandraAlgebraSpec extends WordSpec with Matchers with CassandraBaseSpec with OptionValues with EitherTValues {
+class CassandraAlgebraSpec extends WordSpec with Matchers with CassandraBaseSpec with OptionValues with EitherTValues with FixedClock {
 
   val frameTable = "frames_table"
 
@@ -97,7 +97,7 @@ class CassandraAlgebraSpec extends WordSpec with Matchers with CassandraBaseSpec
           2,
           "V2_script.cql",
           md5("body_2"),
-          LocalDate.now().format(DateTimeFormatter.ISO_DATE),
+          LocalDate.now(fixedClock).format(DateTimeFormatter.ISO_DATE),
           None,
           success = true,
           10L
@@ -115,7 +115,7 @@ class CassandraAlgebraSpec extends WordSpec with Matchers with CassandraBaseSpec
         } yield (insertResult, lastScriptExecutedWithSuccess)
 
         lastScriptExecutedWithSuccess.rightValue shouldBe (FrameCreated, Some(
-          ExecutedScript(1, "V1_script.cql", md5("body_1"), LocalDate.now().format(DateTimeFormatter.ISO_DATE), None, success = true, 10L)
+          ExecutedScript(1, "V1_script.cql", md5("body_1"), LocalDate.now(fixedClock).format(DateTimeFormatter.ISO_DATE), None, success = true, 10L)
         ))
       }
     }
@@ -192,6 +192,6 @@ class CassandraAlgebraSpec extends WordSpec with Matchers with CassandraBaseSpec
   private def checkTable(keyspace: String, table: String): EitherT[IO, OperationError, Boolean] =
     EitherT.pure(clusterResource.use(cluster => IO(Option(cluster.getMetadata.getKeyspace(keyspace).getTable(table)).isDefined)).unsafeRunSync())
 
-  private def mockExecutedScript(version: Long, success: Boolean = true, errorMessage: Option[String] = None) =
-    ExecutedScript(version, s"V${version}_script.cql", md5(s"body_$version"), LocalDate.now().toString, errorMessage, success, 10)
+  private def mockExecutedScript(version: Long, success: Boolean = true, errorMessage: Option[String] = None)(implicit clock: Clock) =
+    ExecutedScript(version, s"V${version}_script.cql", md5(s"body_$version"), LocalDate.now(clock).toString, errorMessage, success, 10)
 }

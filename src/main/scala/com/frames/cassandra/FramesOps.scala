@@ -1,6 +1,6 @@
 package com.frames.cassandra
 import java.security.MessageDigest
-import java.time.LocalDate
+import java.time.{Clock, LocalDate}
 import java.time.format.DateTimeFormatter
 
 import com.datastax.driver.core.querybuilder.{Insert, QueryBuilder}
@@ -61,13 +61,13 @@ object FramesOps {
     insertStatement
   }
 
-  def boundInsertStatement(insertStatement: Insert, appliedScript: ExecutedScript)(implicit session: Session): BoundStatement = {
+  def boundInsertStatement(insertStatement: Insert, appliedScript: ExecutedScript)(implicit session: Session, clock: Clock): BoundStatement = {
 
     val boundStatement = new BoundStatement(session.prepare(insertStatement))
       .setLong(FramesField.Version, appliedScript.version)
       .setString(FramesField.FileName, appliedScript.fileName)
       .setString(FramesField.Checksum, appliedScript.checksum)
-      .setString(FramesField.Date, LocalDate.now().format(DateTimeFormatter.ISO_DATE))
+      .setString(FramesField.Date, LocalDate.now(clock).format(DateTimeFormatter.ISO_DATE))
       .setBool(FramesField.Success, appliedScript.success)
       .setLong(FramesField.ExecutionTime, appliedScript.executionTime)
 

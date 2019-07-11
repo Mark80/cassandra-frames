@@ -61,8 +61,8 @@ class ScriptsOpsSpec extends WordSpec with Matchers with AlgebraFixture with Eit
 
       val applied =
         List(
-          mockExecutedScript(1, "V1_script_name.cql", FramesOps.md5("ADD TABLE1"), success = true, None),
-          mockExecutedScript(2, "V2_script_name.cql", FramesOps.md5("ADD TABLE2"), success = true, None)
+          mockExecutedScript(1, "V1_script_name.cql", Checksum.calculate[String]("ADD TABLE1"), success = true, None),
+          mockExecutedScript(2, "V2_script_name.cql", Checksum.calculate[String]("ADD TABLE2"), success = true, None)
         )
 
       val result = for {
@@ -78,8 +78,8 @@ class ScriptsOpsSpec extends WordSpec with Matchers with AlgebraFixture with Eit
 
         val applied =
           List(
-            mockExecutedScript(1, "V1_script_name.cql", FramesOps.md5("ADD TABLE1"), success = true, None),
-            mockExecutedScript(2, "V2_script_name.cql", FramesOps.md5("ADD TABLE2"), success = true, None)
+            mockExecutedScript(1, "V1_script_name.cql", Checksum.calculate[String]("ADD TABLE1"), success = true, None),
+            mockExecutedScript(2, "V2_script_name.cql", Checksum.calculate[String]("ADD TABLE2"), success = true, None)
           )
 
         val result = for {

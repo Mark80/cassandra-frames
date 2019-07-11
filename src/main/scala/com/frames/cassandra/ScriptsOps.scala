@@ -66,7 +66,7 @@ object ScriptsOps extends ResourceDelay {
 
   private def hasDifferentChecksum(tuple: (ExecutedScript, Option[String])) =
     tuple._2.forall(sourceBody => {
-      tuple._1.checksum != FramesOps.md5(sourceBody)
+      tuple._1.checksum != Checksum.calculate[String](sourceBody)
     })
 
 }

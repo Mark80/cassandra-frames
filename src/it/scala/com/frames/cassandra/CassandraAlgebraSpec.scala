@@ -17,7 +17,6 @@ class CassandraAlgebraSpec extends WordSpec with Matchers with CassandraBaseSpec
   override def keySpace: String = "keyspace_name"
 
   import CassandraAlgebra._
-  import FramesOps._
 
   "CassandraAlgebra" when {
 
@@ -96,7 +95,7 @@ class CassandraAlgebraSpec extends WordSpec with Matchers with CassandraBaseSpec
         lastScriptExecutedWithSuccess.rightValue.value shouldBe ExecutedScript(
           2,
           "V2_script.cql",
-          md5("body_2"),
+          Checksum.calculate[String]("body_2"),
           LocalDate.now(fixedClock).format(DateTimeFormatter.ISO_DATE),
           None,
           success = true,
@@ -115,8 +114,13 @@ class CassandraAlgebraSpec extends WordSpec with Matchers with CassandraBaseSpec
         } yield (insertResult, lastScriptExecutedWithSuccess)
 
         lastScriptExecutedWithSuccess.rightValue shouldBe (FrameCreated, Some(
-          ExecutedScript(1, "V1_script.cql", md5("body_1"), LocalDate.now(fixedClock).format(DateTimeFormatter.ISO_DATE), None, success = true, 10L)
-        ))
+          ExecutedScript(1,
+                         "V1_script.cql",
+                         Checksum.calculate[String]("body_1"),
+                         LocalDate.now(fixedClock).format(DateTimeFormatter.ISO_DATE),
+                         None,
+                         success = true,
+                         10L)))
       }
     }
 
@@ -193,5 +197,11 @@ class CassandraAlgebraSpec extends WordSpec with Matchers with CassandraBaseSpec
     EitherT.pure(clusterResource.use(cluster => IO(Option(cluster.getMetadata.getKeyspace(keyspace).getTable(table)).isDefined)).unsafeRunSync())
 
   private def mockExecutedScript(version: Long, success: Boolean = true, errorMessage: Option[String] = None)(implicit clock: Clock) =
-    ExecutedScript(version, s"V${version}_script.cql", md5(s"body_$version"), LocalDate.now(clock).toString, errorMessage, success, 10)
+    ExecutedScript(version,
+                   s"V${version}_script.cql",
+                   Checksum.calculate[String](s"body_$version"),
+                   LocalDate.now(clock).toString,
+                   errorMessage,
+                   success,
+                   10)
 }

@@ -75,6 +75,4 @@ object FramesOps {
     boundStatement.bind()
   }.bind()
 
-  def md5(s: String): String =
-    MessageDigest.getInstance("MD5").digest(s.getBytes).mkString
 }

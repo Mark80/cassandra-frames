@@ -23,14 +23,16 @@ object ScriptsOps extends ResourceDelay {
   def loadScripts[F[_]](scriptsFolder: String = Config.DefaultScriptFolder)(implicit sync: Sync[F]): ErrorOr[F, List[CqlFile]] =
     Option(getClass.getResource(scriptsFolder)) match {
       case Some(folder) =>
-        getCqlFiles(new File(folder.getPath))
+        println(getClass.getResource(scriptsFolder))
+        getCqlFiles(new File("/Users/mtosini/toy-project/cassandra-frames/src/main/scala/com/frames/cassandra/migrations"))
           .foldLeft(ErrorOr.apply(sync.pure(Right(List.empty[CqlFile]): Either[OperationError, List[CqlFile]]))) { (accFiles, file) =>
             for {
               source      <- useCqlResource(generateSource(file))
               resultFiles <- accFiles
             } yield source :: resultFiles
           }
-      case None => EitherT.fromEither(Left(ScriptFolderNotExists(scriptsFolder)))
+      case None =>
+        EitherT.fromEither(Left(ScriptFolderNotExists(scriptsFolder)))
     }
 
   def splitScriptSource[F[_]](files: List[CqlFile])(implicit sync: Sync[F]): ErrorOr[F, Map[String, List[String]]] =
@@ -45,8 +47,11 @@ object ScriptsOps extends ResourceDelay {
         }
     }()
 
-  private def getCqlFiles(folder: File): List[File] =
+  private def getCqlFiles(folder: File): List[File] = {
+    println(">>>>>>><" + folder.exists())
+    //println(">>>>>>><" + folder.listFiles(_.getName.endsWith(".cql")).toList)
     folder.listFiles(_.getName.endsWith(".cql")).toList
+  }
 
   def getScriptWithChangedSource[F[_]](scriptFiles: List[CqlFile], appliedScripts: List[ExecutedScript])(
       implicit sync: Sync[F]
@@ -58,13 +63,13 @@ object ScriptsOps extends ResourceDelay {
         .map(_._1)
     }()
 
-  private def toTupleWithFileBody(appliedScript: ExecutedScript, scriptFiles: List[CqlFile]) =
+  private def toTupleWithFileBody(appliedScript: ExecutedScript, scriptFiles: List[CqlFile]): (ExecutedScript, Option[String]) =
     (appliedScript, getRelativeScriptFile(appliedScript.fileName, scriptFiles))
 
-  private def getRelativeScriptFile(appliedScriptName: String, scriptFiles: List[CqlFile]) =
+  private def getRelativeScriptFile(appliedScriptName: String, scriptFiles: List[CqlFile]): Option[String] =
     scriptFiles.find(script => script.name == appliedScriptName).map(_.body)
 
-  private def hasDifferentChecksum(tuple: (ExecutedScript, Option[String])) =
+  private def hasDifferentChecksum(tuple: (ExecutedScript, Option[String])): Boolean =
     tuple._2.forall(sourceBody => {
       tuple._1.checksum != Checksum.calculate[String](sourceBody)
     })

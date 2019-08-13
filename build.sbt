@@ -37,4 +37,9 @@ lazy val cassandraFrame = project
       "org.scalamock" %% "scalamock" % "4.2.0" % Test,
       "com.typesafe" % "config" % "1.3.4"
     )
-  )
+  ).enablePlugins(JavaAppPackaging,AssemblyPlugin)
+
+assemblyMergeStrategy in assembly := {
+  case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+  case x => MergeStrategy.first
+}

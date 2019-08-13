@@ -1,5 +1,4 @@
 package com.frames.cassandra
-import java.security.MessageDigest
 import java.time.{Clock, LocalDate}
 import java.time.format.DateTimeFormatter
 
@@ -25,6 +24,20 @@ case class ExecutedScript(
     success: Boolean,
     executionTime: Long
 )
+
+object ExecutedScript {
+  def from(cqlFile: CqlFile, checksum: String, executionDate: String, error: Option[String], executionTime: Long): ExecutedScript =
+    ExecutedScript(
+      version = cqlFile.name.split("_")(0).substring(1).toLong,
+      fileName = cqlFile.name,
+      checksum = checksum,
+      date = executionDate,
+      errorMessage = error,
+      success = error.isEmpty,
+      executionTime = executionTime
+    )
+
+}
 
 object FramesOps {
 

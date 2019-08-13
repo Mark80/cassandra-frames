@@ -187,6 +187,15 @@ class CassandraAlgebraSpec extends WordSpec with Matchers with CassandraBaseSpec
 
         executedScripts.leftValue shouldBe a[OperationError]
       }
+
+      "tmp" in {
+
+        ScriptsOps
+          .loadScripts[IO]()
+          .rightValue should have size 3
+
+      }
+
     }
   }
 
